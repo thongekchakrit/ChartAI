@@ -34,9 +34,9 @@ def load_data(UPLOADED_FILE):
         data.rename(lowercase, axis='columns', inplace=True)
     else:
         st.warning("Please upload a csv file, using default dataset...")
-        data = pd.read_csv(DATA_URL, nrows=5)
-        lowercase = lambda x: str(x).lower()
-        data.rename(lowercase, axis='columns', inplace=True)
+        # data = pd.read_csv(DATA_URL, nrows=5)
+        # lowercase = lambda x: str(x).lower()
+        # data.rename(lowercase, axis='columns', inplace=True)
 
     data_random_sample = data.sample(frac=0.05)
     rows = data_random_sample.values.tolist()
@@ -90,40 +90,42 @@ def plot_scatter(dataframe):
     :return: Plot
     """
 
+if UPLOADED_FILE is not None:
+    # Create a text element and let the reader know the data is loading.
+    DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
-# Create a text element and let the reader know the data is loading.
-DATA, sample_data_overview = load_data(UPLOADED_FILE)
+    if 'question_dict' not in st.session_state:
+        st.session_state['question_dict'] = {}
 
-if 'question_dict' not in st.session_state:
-    st.session_state['question_dict'] = {}
+    #####################################################
+    st.markdown(f"### Overview of the data.")
+    get_data_overview(sample_data_overview)
 
-#####################################################
-st.markdown(f"### Overview of the data.")
-get_data_overview(sample_data_overview)
+    # Inspecting raw data
+    st.subheader('Raw data')
+    get_raw_table(DATA)
 
-# Inspecting raw data
-st.subheader('Raw data')
-get_raw_table(DATA)
+    st.subheader('Automated Visualizations')
 
-st.subheader('Automated Visualizations')
+    new_question = st.text_input("Ask questions below and let AI do the visualization for you...", key = 'new_question')
+    add_new = st.button("Ask new question")
 
-new_question = st.text_input("Ask questions below and let AI do the visualization for you...", key = 'new_question')
-add_new = st.button("Ask new question")
+    if add_new or new_question:
+        if new_question not in st.session_state['question_dict']:
+            print("New question: ", new_question)
+            st.session_state['question_dict'][new_question] = ''
+            for key in st.session_state['question_dict']:
+                if new_question == key:
+                    add_new_row(sample_data_overview, key)
+                    pass
+                else:
+                    # show_historical_data(key)
+                    pass
 
-if add_new or new_question:
-    if new_question not in st.session_state['question_dict']:
-        print("New question: ", new_question)
-        st.session_state['question_dict'][new_question] = ''
-        for key in st.session_state['question_dict']:
-            if new_question == key:
-                add_new_row(sample_data_overview, key)
-                pass
-            else:
-                # show_historical_data(key)
-                pass
-
-    else:
-        st.warning(str(new_question)+" exists already!")
+        else:
+            st.warning(str(new_question)+" exists already!")
+else:
+    st.warning("Please upload a csv file, using default dataset...")
 
 
 
