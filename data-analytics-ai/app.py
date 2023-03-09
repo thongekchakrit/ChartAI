@@ -12,7 +12,7 @@ st.write(
     "Uploading a csv, ask a question and gain insights from your data."
 )
 
-DATA_URL = ('dataset/File_2_ID_2015_Domains_of_deprivation.csv')
+DATA_URL = ('File_2_ID_2015_Domains_of_deprivation.csv')
 
 UPLOADED_FILE = st.file_uploader("Choose a file")
 GPT_SECRETS = st.secrets["gpt_secret"]
