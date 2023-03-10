@@ -49,8 +49,9 @@ def get_data_overview(header):
         st.session_state['question_dict'] = {}
 @st.cache_data
 def add_new_row(sample_data_overview, new_question):
-    prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
-             f"What plot can best represent this data?"
+    # prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
+    #          f"What plot can best represent this data?"
+    prompt = new_question
     response = gpt3.gpt_promt_davinci(prompt)
     # query = response.replace("sample_data", "DATA")
     # query = query.replace("\n", " ")
