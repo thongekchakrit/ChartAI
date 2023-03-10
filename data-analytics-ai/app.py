@@ -32,11 +32,6 @@ def load_data(UPLOADED_FILE):
         data = pd.read_csv(UPLOADED_FILE)
         lowercase = lambda x: str(x).lower()
         data.rename(lowercase, axis='columns', inplace=True)
-    else:
-        st.warning("Please upload a csv file")
-        # data = pd.read_csv(DATA_URL, nrows=5)
-        # lowercase = lambda x: str(x).lower()
-        # data.rename(lowercase, axis='columns', inplace=True)
 
     data_random_sample = data.sample(frac=0.05)
     rows = data_random_sample.values.tolist()
@@ -138,7 +133,7 @@ if UPLOADED_FILE is not None:
         else:
             st.warning(str(new_question)+" exists already!")
 else:
-    st.warning("Please upload a csv file, using default dataset...")
+    st.warning("Please upload a csv file")
 
 
 
