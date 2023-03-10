@@ -52,13 +52,13 @@ def add_new_row(sample_data_overview, new_question):
     prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
              f"What plot can best represent this data?"
     response = gpt3.gpt_promt_davinci(prompt)
-    query = response.replace("sample_data", "DATA")
-    query = query.replace("\n", " ")
+    # query = response.replace("sample_data", "DATA")
+    # query = query.replace("\n", " ")
     # dataframe_new = duckdb.query(query).df()
     # print(dataframe_new)
     # st.session_state['question_dict'][new_question] = dataframe_new
     st.caption(f"Question: {new_question}")
-    st.caption(f"Query: {query}")
+    st.caption(f"Query: {response}")
     # st.bar_chart(dataframe_new)
 
 # def add_new_row(sample_data_overview, new_question):
