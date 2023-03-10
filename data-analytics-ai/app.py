@@ -33,7 +33,7 @@ def load_data(UPLOADED_FILE):
         lowercase = lambda x: str(x).lower()
         data.rename(lowercase, axis='columns', inplace=True)
     else:
-        st.warning("Please upload a csv file, using default dataset...")
+        st.warning("Please upload a csv file")
         # data = pd.read_csv(DATA_URL, nrows=5)
         # lowercase = lambda x: str(x).lower()
         # data.rename(lowercase, axis='columns', inplace=True)
@@ -65,6 +65,19 @@ def add_new_row(sample_data_overview, new_question):
     st.caption(f"Question: {new_question}")
     st.caption(f"Query: {query}")
     # st.bar_chart(dataframe_new)
+
+# def add_new_row(sample_data_overview, new_question):
+#     prompt = f"Given the csv file sample data with headers: {sample_data_overview}, " \
+#              f"write a python script to visualize the data with the given dataset columns to get '{new_question}'. "
+#     response = gpt3.gpt_promt_davinci(prompt)
+#     # query = response.replace("sample_data", "DATA")
+#     # query = query.replace("\n", " ")
+#     # dataframe_new = duckdb.query(query).df()
+#     # print(dataframe_new)
+#     # st.session_state['question_dict'][new_question] = dataframe_new
+#     st.caption(f"Question: {new_question}")
+#     st.caption(f"Query: {response}")
+#     # st.bar_chart(dataframe_new)
 
 @st.cache_data
 def show_historical_data(old_question):
