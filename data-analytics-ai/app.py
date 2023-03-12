@@ -48,32 +48,19 @@ def get_data_overview(header):
     if 'question_dict' not in st.session_state:
         st.session_state['question_dict'] = {}
 @st.cache_data
-def add_new_row(sample_data_overview, new_question):
-    # prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
-    #          f"What plot can best represent this data?"
-    prompt = f"Given the csv file sample data with headers: {sample_data_overview}, '{new_question}'?"
+def query(sample_data_overview, new_question):
+    prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
+             f"What plot can best represent this data?"
     response = gpt3.gpt_promt_davinci(prompt)
     # query = response.replace("sample_data", "DATA")
     # query = query.replace("\n", " ")
     # dataframe_new = duckdb.query(query).df()
     # print(dataframe_new)
     # st.session_state['question_dict'][new_question] = dataframe_new
-    st.caption(f"Question: {new_question}")
-    st.caption(f"Query: {response}")
+    # st.caption(f"Question: {new_question}")
+    # st.caption(f"Query: {response}")
     # st.bar_chart(dataframe_new)
-
-# def add_new_row(sample_data_overview, new_question):
-#     prompt = f"Given the csv file sample data with headers: {sample_data_overview}, " \
-#              f"write a python script to visualize the data with the given dataset columns to get '{new_question}'. "
-#     response = gpt3.gpt_promt_davinci(prompt)
-#     # query = response.replace("sample_data", "DATA")
-#     # query = query.replace("\n", " ")
-#     # dataframe_new = duckdb.query(query).df()
-#     # print(dataframe_new)
-#     # st.session_state['question_dict'][new_question] = dataframe_new
-#     st.caption(f"Question: {new_question}")
-#     st.caption(f"Query: {response}")
-#     # st.bar_chart(dataframe_new)
+    return response
 
 @st.cache_data
 def show_historical_data(old_question):
@@ -92,12 +79,6 @@ def get_data_overview(data):
 def get_raw_table(data):
     st.write(data)
 
-def plot_scatter(dataframe):
-    """
-
-    :param dataframe:
-    :return: Plot
-    """
 
 if UPLOADED_FILE is not None:
     # Create a text element and let the reader know the data is loading.
@@ -105,6 +86,12 @@ if UPLOADED_FILE is not None:
 
     if 'question_dict' not in st.session_state:
         st.session_state['question_dict'] = {}
+
+    if 'generated' not in st.session_state:
+        st.session_state['generated'] = []
+
+    if 'past' not in st.session_state:
+        st.session_state['past'] = []
 
     #####################################################
     st.markdown(f"### Overview of the data.")
@@ -125,14 +112,17 @@ if UPLOADED_FILE is not None:
             st.session_state['question_dict'][new_question] = ''
             for key in st.session_state['question_dict']:
                 if new_question == key:
-                    add_new_row(sample_data_overview, key)
-                    pass
-                else:
-                    # show_historical_data(key)
-                    pass
+                    output = query(sample_data_overview, key)
 
-        else:
-            st.warning(str(new_question)+" exists already!")
+                    st.session_state.past.append(new_question)
+                    st.session_state.generated.append(output)
+
+    if st.session_state['generated']:
+
+        for i in range(len(st.session_state['generated'])-1, -1, -1):
+            st.text("Question: " + st.session_state['past'][i])
+            st.text_area("Answer: ", value = (st.session_state["generated"][i]).strip())
+
 else:
     st.warning("Please upload a csv file")
 
