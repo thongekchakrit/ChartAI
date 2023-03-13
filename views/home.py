@@ -34,6 +34,9 @@ def load_view():
         st.session_state['past_dataset input analysis - visuals'] = []
         st.session_state['past_general - non dataset related'] = []
 
+    if "disabled_input" not in st.session_state:
+        st.session_state["disabled_input"] = False
+
     @st.cache_resource
     def load_data(UPLOADED_FILE):
         if UPLOADED_FILE is not None:
@@ -55,19 +58,63 @@ def load_view():
             st.caption(response['content'])
         if 'question_dict' not in st.session_state:
             st.session_state['question_dict'] = {}
+
+    @st.cache_data
+    def get_summary_statistics(dataframe):
+        with st.spinner(text="In progress..."):
+            description = dataframe.describe()
+            get_raw_table(description)
+            json_description = description.to_json()
+            prompt = f"Given the summary description of the data below: {json_description}, " \
+                     f"explain the result given in full detail."
+            response = gpt3.gpt_promt(prompt)
+            st.caption(response['content'])
+
+            description_objects = dataframe.describe(include=['O'])
+            get_raw_table(description_objects)
+            prompt_2 = f"Given the summary description of the data below of categorical data: {description_objects}, " \
+                     f"explain the result given in full detail."
+            response = gpt3.gpt_promt(prompt_2)
+            st.caption(response['content'])
+
+
     @st.cache_data
     def query(sample_data_overview, new_question):
         prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
                  f"What plot can best represent this data?"
         response = gpt3.gpt_promt_davinci(prompt)
-        # query = response.replace("sample_data", "DATA")
-        # query = query.replace("\n", " ")
-        # dataframe_new = duckdb.query(query).df()
-        # print(dataframe_new)
-        # st.session_state['question_dict'][new_question] = dataframe_new
-        # st.caption(f"Question: {new_question}")
-        # st.caption(f"Query: {response}")
-        # st.bar_chart(dataframe_new)
+        query = response.replace("sample_data", "DATA")
+        query = query.replace("\n", " ")
+        dataframe_new = duckdb.query(query).df()
+        print(dataframe_new)
+        st.session_state['question_dict_dataset input analysis - visuals'][new_question] = dataframe_new
+        return response
+
+    @st.cache_data
+    def query_text(sample_data_overview, new_question):
+        prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. "
+        response = gpt3.gpt_promt_davinci(prompt)
+        query = response.replace("sample_data", "DATA")
+        query = query.replace("\n", " ")
+        dataframe_new = duckdb.query(query).df().head(50)
+        if len(dataframe_new) >0:
+            dataframe_json = dataframe_new.to_json()
+            print(query, "\n",dataframe_new)
+            prompt = f"Please give a summary of the result in human readable text: " \
+                     f"The question '{new_question}' was asked. The result has been generated using {query}," \
+                     f"Answering in a way that answers the question, explain the result: {dataframe_json}"
+            response = gpt3.gpt_promt_davinci(prompt)
+        else:
+            prompt = f"Please write an explaination using simple terms on why the question asked cannot be answered:" \
+                     f"Using the dataset {sample_data_overview}, with '{query}' produced no result, " \
+                     f"when the question '{new_question}' was asked."
+            response = gpt3.gpt_promt_davinci(prompt)
+        return response
+
+    @st.cache_data
+    def query_basic(new_question):
+        prompt = f"As an acturary answer the following question:  '{new_question}'."
+        response = gpt3.gpt_promt_davinci(prompt)
         return response
 
     @st.cache_data
@@ -79,7 +126,8 @@ def load_view():
     @st.cache_data
     def get_data_overview(data):
         with st.spinner(text="In progress..."):
-            prompt = f"Given the csv file with headers and sample data: {data} describe what each column means and what the dataset can be used for?"
+            prompt = f"Given the csv file with headers and sample data: {data} describe what each " \
+                     f"column means and what the dataset can be used for?"
             response = gpt3.gpt_promt_davinci(prompt)
             st.caption(response)
 
@@ -89,36 +137,49 @@ def load_view():
 
     def ask_new_question(question_option):
         text = st.empty()
+
         index_questions = 'question_dict_' + question_option
         index_generated = 'generated_' + question_option
         index_past = 'past_' + question_option
 
         if question_option == 'dataset input analysis - text':
-            new_question = text.text_input("Ask questions below and talk to our ai...", value ="", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
         elif question_option == 'dataset input analysis - visuals':
-            new_question = text.text_input("Ask questions below and talk to our ai...", value ="", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
         else:
-            new_question = text.text_input("Ask questions below and talk to our ai...", value ="", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
+
+        print("Line 109", new_question)
 
         if new_question:
+            print("Line 112", new_question)
+            print("-------------")
             if new_question not in st.session_state[index_questions]:
                 st.session_state[index_questions][new_question] = ''
                 for key in st.session_state[index_questions]:
                     if new_question == key:
-                        output = query(sample_data_overview, key)
+                        if question_option == 'dataset input analysis - text':
+                            output = query_text(sample_data_overview, key)
+                        elif question_option == 'dataset input analysis - visuals':
+                            output = query(sample_data_overview, key)
+                        else:
+                            output = query_basic(key)
+
                         st.session_state[index_past].append(new_question)
                         st.session_state[index_generated].append(output)
-                text.text_input("Ask questions below and talk to our ai...", value ="", key = 'clear')
 
             else:
                 st.warning('Question exists...', icon="⚠️")
 
-        if st.session_state[index_generated]:
-            for i in range(len(st.session_state[index_generated])-1, -1, -1):
-                st.text("Question: " + st.session_state[index_past][i])
-                st.text("Answer: ")
-                st.code((st.session_state[index_generated][i]).strip())
-
+        with st.spinner(text="In progress..."):
+            if st.session_state[index_generated]:
+                for i in range(len(st.session_state[index_generated])-1, -1, -1):
+                    try:
+                        st.text("Question: " + st.session_state[index_past][i])
+                        # st.text_area(label = "😀Question", value = (st.session_state[index_past][i]).strip(), disabled=True)
+                        st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True)
+                    except:
+                        pass
 
 
     if UPLOADED_FILE is not None:
@@ -133,6 +194,10 @@ def load_view():
         st.subheader('Raw data')
         get_raw_table(DATA)
 
+        # Inspecting summary statistics
+        st.subheader('Summary Statistics')
+        get_summary_statistics(DATA)
+
         with st.sidebar:
             st.markdown("# AutoViZChat💬")
             question_option = st.selectbox(
@@ -143,7 +208,6 @@ def load_view():
             )
 
             ask_new_question(question_option.lower())
-
 
 
     else:

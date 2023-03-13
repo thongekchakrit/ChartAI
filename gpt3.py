@@ -13,6 +13,6 @@ def gpt_promt_davinci(message):
     response = openai.Completion.create(
         model="text-davinci-003",
         prompt=message,
-        temperature=0.2,
+        temperature=0.01,
         max_tokens=1000)
     return response.choices[0]['text']
