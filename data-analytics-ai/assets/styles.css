@@ -1,0 +1,99 @@
+.navbar{
+    font-family: 'Trebuchet MS', sans-serif;
+    position: fixed;
+    width: 100%;
+    background: #353535;
+    z-index: 99999999999999999999;
+    left: 0rem;
+    top: 0rem;
+    height: 55px;
+}
+
+.navitem{
+    float: left;
+    display: block;
+    color: #f2f2f2 !important;
+    text-align: center;
+    padding: 20px 20px;
+    text-decoration: none !important;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-family: 'Trebuchet MS', sans-serif;
+}
+
+.navitem:hover{
+    background-color: #333;
+    height: 55px !important;
+}
+
+
+.settings{
+    height:1rem;
+}
+
+.version-span{
+    color: white;
+    position: absolute;
+    right: 1rem;
+    bottom: 1.75rem;
+    opacity: 0.5;
+    z-index: 9999;
+    border: 2px solid #333;
+    border-radius: 25px;
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+    background: #333;
+}
+
+.dropbtn {
+    background-color: transparent;
+    color: white;
+    padding: 10px;
+    font-size: 16px;
+    height: 55px;
+    opacity: 0.5;
+    filter: invert(1);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.dropbtn:hover, .dropbtn:focus {
+    opacity:1;
+}
+
+.dropdown {
+    position: fixed;
+    display: inline-block;
+    right: 0rem;
+    top: 0rem;
+}
+
+.dropdown-content {
+    visibility: hidden;
+    position: fixed;
+    border-radius: 9px;
+    background-color: #333;
+    min-width: 160px;
+    overflow: auto;
+    right:0.3rem;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+}
+
+.dropdown-content a {
+    color: white;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropbtn:hover{
+    background-color: rgba(221, 221, 221, 0.233);
+    background: rgba(221, 221, 221, 0.233);
+}
+
+.dropdown a:hover {background-color: rgba(221, 221, 221, 0.233);}
+
+iframe{
+    height: 0rem;
+}

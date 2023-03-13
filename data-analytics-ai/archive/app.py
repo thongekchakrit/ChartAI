@@ -3,12 +3,10 @@ import pandas as pd
 import gpt3
 import duckdb
 import plotly
-
-
 st.set_page_config(page_title="Automated Data Analysis")
 
-st.write("## Data Analytics AI")
-st.write(
+st.markdown("# **Data Analytics AI**")
+st.markdown(
     "Uploading a csv, ask a question and gain insights from your data."
 )
 
@@ -121,7 +119,8 @@ if UPLOADED_FILE is not None:
 
         for i in range(len(st.session_state['generated'])-1, -1, -1):
             st.text("Question: " + st.session_state['past'][i])
-            st.text_area("Answer: ", value = (st.session_state["generated"][i]).strip())
+            st.text("Answer: ")
+            st.code((st.session_state["generated"][i]).strip())
 
 else:
     st.warning("Please upload a csv file")
