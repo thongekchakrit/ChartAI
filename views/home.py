@@ -15,7 +15,7 @@ def load_view():
     gpt3.openai.api_key = GPT_SECRETS
 
     if not UPLOADED_FILE:
-        UPLOADED_FILE = "domains_of_deprevation.csv"
+        UPLOADED_FILE = "sample_data.csv"
         st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
     # Store the initial value of widgets in session state
