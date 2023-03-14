@@ -16,7 +16,7 @@ def load_view():
 
     if not UPLOADED_FILE:
         UPLOADED_FILE = "domains_of_deprevation.csv"
-        st.warning("Please upload a csv file to use your own dataset...")
+        st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
     # Store the initial value of widgets in session state
     if "visibility" not in st.session_state:
