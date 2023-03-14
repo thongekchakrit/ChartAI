@@ -3,6 +3,7 @@ import pandas as pd
 import gpt3
 import duckdb
 import plotly
+import re
 
 def load_view():
     st.markdown("# **Data Analytics AI**")
@@ -95,10 +96,13 @@ def load_view():
 
     @st.cache_data
     def query_text(sample_data_overview, new_question):
+        print("Query: ", new_question)
         prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. "
         response = gpt3.gpt_promt_davinci(prompt)
         query = response.replace("sample_data", "DATA")
         query = query.replace("\n", " ")
+        query = re.search(r"(SELECT .*)\;", query).group(1)
+        print("Query: ", query)
         dataframe_new = duckdb.query(query).df().head(50)
         if len(dataframe_new) >0:
             dataframe_json = dataframe_new.to_json()
