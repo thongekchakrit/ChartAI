@@ -161,11 +161,20 @@ def load_view():
                 for key in st.session_state[index_questions]:
                     if new_question == key:
                         if question_option == 'dataset input analysis - text':
-                            output = query_text(sample_data_overview, key)
+                            try:
+                                output = query_text(sample_data_overview, key)
+                            except:
+                                output = "The query produce no result, please rephrase the question."
                         elif question_option == 'dataset input analysis - visuals':
-                            output = query(sample_data_overview, key)
+                            try:
+                                output = query(sample_data_overview, key)
+                            except:
+                                output = "The query produce no result, please rephrase the question."
                         else:
-                            output = query_basic(key)
+                            try:
+                                output = query_basic(key)
+                            except:
+                                output = "The query produce no result, please rephrase the question."
 
                         st.session_state[index_past].append(new_question)
                         st.session_state[index_generated].append(output)
@@ -177,8 +186,9 @@ def load_view():
             if st.session_state[index_generated]:
                 for i in range(len(st.session_state[index_generated])-1, -1, -1):
                     try:
-                        st.text("Question: " + st.session_state[index_past][i])
+                        st.markdown("**Question: " + st.session_state[index_past][i] +"**")
                         # st.text_area(label = "😀Question", value = (st.session_state[index_past][i]).strip(), disabled=True)
+                        # st.markdown(":grey[Answer: " + st.session_state[index_generated][i].strip() + "] ")
                         st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True)
                     except:
                         pass
