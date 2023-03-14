@@ -2,7 +2,7 @@ import streamlit as st
 import utils as utl
 from views import home,about,configuration
 
-st.set_page_config(layout="centered", page_title='Automated Data Analysis')
+st.set_page_config(layout="centered", page_title='Automated Data Analysis', page_icon = 'assets/images/favicon.png')
 st.set_option('deprecation.showPyplotGlobalUse', False)
 utl.inject_custom_css()
 utl.navbar_component()

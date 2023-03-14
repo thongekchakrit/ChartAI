@@ -3,7 +3,7 @@ import pandas as pd
 import gpt3
 import duckdb
 import plotly
-st.set_page_config(page_title="Automated Data Analysis")
+st.set_page_config(page_title="Automated Data Analysis", page_icon = '.')
 
 st.markdown("# **Data Analytics AI**")
 st.markdown(
