@@ -14,6 +14,10 @@ def load_view():
     GPT_SECRETS = st.secrets["gpt_secret"]
     gpt3.openai.api_key = GPT_SECRETS
 
+    if not UPLOADED_FILE:
+        UPLOADED_FILE = "domains_of_deprevation.csv"
+        st.warning("Please upload a csv file to use your own dataset...")
+
     # Store the initial value of widgets in session state
     if "visibility" not in st.session_state:
         st.session_state.visibility = "visible"
@@ -86,7 +90,6 @@ def load_view():
         query = response.replace("sample_data", "DATA")
         query = query.replace("\n", " ")
         dataframe_new = duckdb.query(query).df()
-        print(dataframe_new)
         st.session_state['question_dict_dataset input analysis - visuals'][new_question] = dataframe_new
         return response
 
@@ -99,7 +102,6 @@ def load_view():
         dataframe_new = duckdb.query(query).df().head(50)
         if len(dataframe_new) >0:
             dataframe_json = dataframe_new.to_json()
-            print(query, "\n",dataframe_new)
             prompt = f"Please give a summary of the result in human readable text: " \
                      f"The question '{new_question}' was asked. The result has been generated using {query}," \
                      f"Answering in a way that answers the question, explain the result: {dataframe_json}"
@@ -149,11 +151,7 @@ def load_view():
         else:
             new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
 
-        print("Line 109", new_question)
-
         if new_question:
-            print("Line 112", new_question)
-            print("-------------")
             if new_question not in st.session_state[index_questions]:
                 st.session_state[index_questions][new_question] = ''
                 for key in st.session_state[index_questions]:
@@ -214,7 +212,7 @@ def load_view():
         with st.sidebar:
             st.markdown("# AutoViZChat💬")
             st.text("Waiting for dataset to be uploaded...")
-        st.warning("Please upload a csv file")
+
 
 
 

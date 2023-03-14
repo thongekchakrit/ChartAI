@@ -10,7 +10,7 @@ st.markdown(
     "Uploading a csv, ask a question and gain insights from your data."
 )
 
-DATA_URL = ('File_2_ID_2015_Domains_of_deprivation.csv')
+DATA_URL = ('domains_of_deprevation.csv')
 
 UPLOADED_FILE = st.file_uploader("Choose a file")
 GPT_SECRETS = st.secrets["gpt_secret"]
