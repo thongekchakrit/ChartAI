@@ -140,6 +140,7 @@ def load_view():
         query = re.search(r"(SELECT .*)\;", query).group(1)
 
         return query
+    
     @st.cache_data
     def query_no_result(sample_data_overview, new_question, sql_query):
         prompt = f"You are an actuary, " \
@@ -147,7 +148,8 @@ def load_view():
                  f"you have generated no result for the question '{new_question}'. " \
                  f"using the sql query '{sql_query}'. " \
                  f"explain why no result is given? is it missing column?" \
-                 f"If column is missing, ask user to rename the column in csv"
+                 f"If column is missing, ask user to rename the column in csv" \
+                 f"Do not show the query in the answer."
         response = gpt3.gpt_promt_davinci(prompt)
         return response
 
@@ -173,7 +175,8 @@ def load_view():
             prompt = f"You are an actuary, " \
                      f"Please give a summary of the result in human readable text: " \
                      f"The question '{new_question}' was asked. The result has been generated using {query}," \
-                     f"Answering in a way that answers the question, explain the result: {dataframe_json}"
+                     f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
+                     f"Do not show the query in the answer."
             response = gpt3.gpt_promt_davinci(prompt)
         else:
             response = query_no_result(sample_data_overview, new_question, query)
