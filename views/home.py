@@ -140,7 +140,7 @@ def load_view():
         query = re.search(r"(SELECT .*)\;", query).group(1)
 
         return query
-    
+
     @st.cache_data
     def query_no_result(sample_data_overview, new_question, sql_query):
         prompt = f"You are an actuary, " \
