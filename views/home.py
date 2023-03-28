@@ -42,6 +42,9 @@ def load_view():
     if "disabled_input" not in st.session_state:
         st.session_state["disabled_input"] = False
 
+    if "sql_results" not in st.session_state:
+        st.session_state["sql_results"] = {}
+
     @st.cache_resource
     def load_data(UPLOADED_FILE):
         if UPLOADED_FILE is not None:
@@ -58,34 +61,55 @@ def load_view():
     @st.cache_data
     def get_data_overview(header):
         with st.spinner(text="In progress..."):
-            prompt = f"Given the csv file with headers: {header} describe what each column means and what the dataset can be used for"
+            prompt =  f"Format your answer to markdown latex. Use markdown font size 3. " \
+                      f"Please do not include heading or subheading."\
+                      f"Given the csv file with headers: {header} " \
+                      f"You are an actuary, " \
+                      f"Describe what each column means and what the dataset can be used for?"
+
             response = gpt3.gpt_promt(prompt)
-            st.caption(response['content'])
+            st.markdown(response['content'])
         if 'question_dict' not in st.session_state:
             st.session_state['question_dict'] = {}
 
     @st.cache_data
     def get_summary_statistics(dataframe):
         with st.spinner(text="In progress..."):
-            description = dataframe.describe()
-            get_raw_table(description)
-            json_description = description.to_json()
-            prompt = f"Given the summary description of the data below: {json_description}, " \
-                     f"explain the result given in full detail."
-            response = gpt3.gpt_promt(prompt)
-            st.caption(response['content'])
 
-            description_objects = dataframe.describe(include=['O'])
-            get_raw_table(description_objects)
-            prompt_2 = f"Given the summary description of the data below of categorical data: {description_objects}, " \
-                     f"explain the result given in full detail."
-            response = gpt3.gpt_promt(prompt_2)
-            st.caption(response['content'])
+            # check dataframe dtype
+            dtype_list = check_data_have_object(dataframe)
+
+            if any(x in dtype_list for x in ['int64', 'float64']):
+                st.info('Numerical dtype detected in data...')
+                description = dataframe.describe()
+                get_raw_table(description)
+                json_description = description.to_json()
+                prompt = f"Format your answer to markdown latex. Use markdown font size 3." \
+                         f"Please do not include heading or subheading." \
+                         f"Given the summary description of the data below: {json_description}, " \
+                         f"You are an actuary, " \
+                         f"Explain the result given in full detail. "
+                response = gpt3.gpt_promt(prompt)
+                st.markdown(response['content'])
+
+            if any(x in dtype_list for x in ['O']):
+                st.info('Numerical dtype detected in data...')
+                description_objects = dataframe.describe(include=['O'])
+                get_raw_table(description_objects)
+                prompt_2 =  f"Format your answer to markdown latex. Use markdown font size 3." \
+                            f"Please do not include heading or subheading." \
+                            f"Given the summary description of the data below of categorical data: {description_objects}, " \
+                            f"You are an actuary, " \
+                            f"explain the result given in full detail "
+                response = gpt3.gpt_promt(prompt_2)
+                st.markdown(response['content'])
 
 
     @st.cache_data
     def query(sample_data_overview, new_question):
-        prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. " \
+        prompt = f"You are an actuary, " \
+                 f"Given the csv file sample data with headers: {sample_data_overview}, " \
+                 f"write a sql script with given dataset columns to get '{new_question}'. " \
                  f"What plot can best represent this data?"
         response = gpt3.gpt_promt_davinci(prompt)
         query = response.replace("sample_data", "DATA")
@@ -95,26 +119,54 @@ def load_view():
         return response
 
     @st.cache_data
-    def query_text(sample_data_overview, new_question):
+    def generate_sql_gpt(sample_data_overview, new_question):
         print("Query: ", new_question)
-        prompt = f"Given the csv file sample data with headers: {sample_data_overview}, write a sql script with given dataset columns to get '{new_question}'. "
+        prompt = f"You are an actuary, " \
+                 f"Given the csv file sample data with headers: {sample_data_overview}, " \
+                 f"write a sql script for duckdb with given dataset columns to get '{new_question}'. "
         response = gpt3.gpt_promt_davinci(prompt)
         query = response.replace("sample_data", "DATA")
         query = query.replace("\n", " ")
         query = re.search(r"(SELECT .*)\;", query).group(1)
+
+        return query
+    @st.cache_data
+    def query_no_result(sample_data_overview, new_question, sql_query):
+        prompt = f"You are an actuary, " \
+                 f"Given the csv file sample data with headers: {sample_data_overview}, " \
+                 f"you have generated no result for the question '{new_question}'. " \
+                 f"using the sql query '{sql_query}'. " \
+                 f"explain why no result is given? is it missing column?" \
+                 f"If column is missing, ask user to rename the column in csv"
+        response = gpt3.gpt_promt_davinci(prompt)
+        return response
+
+    @st.cache_data
+    def get_dataframe_from_duckdb_query(query):
+        try:
+            dataframe_new = duckdb.query(query).df().head(50)
+        except:
+            dataframe_new = pd.DataFrame()
+        return dataframe_new
+
+    @st.cache_data
+    def query_text(sample_data_overview, new_question):
+
+        # Get the query
+        query = generate_sql_gpt(sample_data_overview, new_question)
+
         print("Query: ", query)
-        dataframe_new = duckdb.query(query).df().head(50)
+        dataframe_new = get_dataframe_from_duckdb_query(query)
+
         if len(dataframe_new) >0:
             dataframe_json = dataframe_new.to_json()
-            prompt = f"Please give a summary of the result in human readable text: " \
+            prompt = f"You are an actuary, " \
+                     f"Please give a summary of the result in human readable text: " \
                      f"The question '{new_question}' was asked. The result has been generated using {query}," \
                      f"Answering in a way that answers the question, explain the result: {dataframe_json}"
             response = gpt3.gpt_promt_davinci(prompt)
         else:
-            prompt = f"Please write an explaination using simple terms on why the question asked cannot be answered:" \
-                     f"Using the dataset {sample_data_overview}, with '{query}' produced no result, " \
-                     f"when the question '{new_question}' was asked."
-            response = gpt3.gpt_promt_davinci(prompt)
+            response = query_no_result(sample_data_overview, new_question, query)
         return response
 
     @st.cache_data
@@ -130,16 +182,13 @@ def load_view():
         st.bar_chart(dataframe_old)
 
     @st.cache_data
-    def get_data_overview(data):
-        with st.spinner(text="In progress..."):
-            prompt = f"Given the csv file with headers and sample data: {data} describe what each " \
-                     f"column means and what the dataset can be used for?"
-            response = gpt3.gpt_promt_davinci(prompt)
-            st.caption(response)
-
-    @st.cache_data
     def get_raw_table(data):
         st.write(data)
+
+    @st.cache_data
+    def check_data_have_object(data):
+        resp = data.dtypes.to_list()
+        return resp
 
     def ask_new_question(question_option):
         text = st.empty()
@@ -149,11 +198,11 @@ def load_view():
         index_past = 'past_' + question_option
 
         if question_option == 'dataset input analysis - text':
-            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option).strip()
         elif question_option == 'dataset input analysis - visuals':
-            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option).strip()
         else:
-            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option)
+            new_question = text.text_input("Ask questions below and talk to our ai...", key = question_option).strip()
 
         if new_question:
             if new_question not in st.session_state[index_questions]:
@@ -161,10 +210,8 @@ def load_view():
                 for key in st.session_state[index_questions]:
                     if new_question == key:
                         if question_option == 'dataset input analysis - text':
-                            try:
-                                output = query_text(sample_data_overview, key)
-                            except:
-                                output = "The query produce no result, please rephrase the question."
+                            output = query_text(sample_data_overview, key)
+
                         elif question_option == 'dataset input analysis - visuals':
                             try:
                                 output = query(sample_data_overview, key)
@@ -180,16 +227,33 @@ def load_view():
                         st.session_state[index_generated].append(output)
 
             else:
-                st.warning('Question exists...', icon="⚠️")
+                st.info('Question exists...', icon="⚠️")
+                exist_question_index = st.session_state[index_past].index(new_question)
+                exist_question = st.session_state[index_past].pop(exist_question_index)
+                print(f"This question exists: {exist_question}")
+                exist_output = st.session_state[index_generated].pop(exist_question_index)
+                print(f"This output exists: {exist_output}")
+
+                # Reinsert the question and output
+                st.session_state[index_past].append(exist_question)
+                st.session_state[index_generated].append(exist_output)
 
         with st.spinner(text="In progress..."):
+            counter_non_result = 0
             if st.session_state[index_generated]:
                 for i in range(len(st.session_state[index_generated])-1, -1, -1):
                     try:
-                        st.markdown("**Question: " + st.session_state[index_past][i] +"**")
-                        # st.text_area(label = "😀Question", value = (st.session_state[index_past][i]).strip(), disabled=True)
-                        # st.markdown(":grey[Answer: " + st.session_state[index_generated][i].strip() + "] ")
-                        st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True)
+                        if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
+                            counter_non_result += 1
+                            if counter_non_result <= 1:
+                                # if questions does not produce result,
+                                # only show the first question and hide the rest
+                                st.markdown("**Question: " + st.session_state[index_past][i] + "**")
+                                st.text_area(label = "Answer🤖", value = ("The query produce no result, please rephrase the question.").strip(), disabled=True)
+                        else:
+                            # if questions have result print them out
+                            st.markdown("**Question: " + st.session_state[index_past][i] + "**")
+                            st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True)
                     except:
                         pass
 
@@ -199,7 +263,7 @@ def load_view():
         DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
         #####################################################
-        st.markdown(f"### Overview of the data.")
+        st.markdown(f"### Overview of the data")
         get_data_overview(sample_data_overview)
 
         # Inspecting raw data
