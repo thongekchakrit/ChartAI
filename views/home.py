@@ -45,12 +45,14 @@ def load_view():
     if "sql_results" not in st.session_state:
         st.session_state["sql_results"] = {}
 
+
     @st.cache_resource
     def load_data(UPLOADED_FILE):
         if UPLOADED_FILE is not None:
             data = pd.read_csv(UPLOADED_FILE)
             lowercase = lambda x: str(x).lower()
             data.rename(lowercase, axis='columns', inplace=True)
+            data = rename_dataset_columns(data)
 
         data_random_sample = data.sample(frac=0.05)
         rows = data_random_sample.values.tolist()
@@ -71,6 +73,14 @@ def load_view():
             st.markdown(response['content'])
         if 'question_dict' not in st.session_state:
             st.session_state['question_dict'] = {}
+
+    @st.cache_data
+    def rename_dataset_columns(dataframe):
+        dataframe.columns = dataframe.columns.str.replace('[#,@,&,$,(,)]', '')
+        dataframe.columns = dataframe.columns.str.replace(' ', '_')
+        dataframe.columns = [x.lstrip('_') for x in dataframe.columns]
+        dataframe.columns = [x.strip() for x in dataframe.columns]
+        return dataframe
 
     @st.cache_data
     def get_summary_statistics(dataframe):
@@ -253,7 +263,9 @@ def load_view():
                         else:
                             # if questions have result print them out
                             st.markdown("**Question: " + st.session_state[index_past][i] + "**")
-                            st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True)
+                            height_adjustor = len((st.session_state[index_generated][i]).strip())*0.75
+                            st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
+                                         height=int(height_adjustor))
                     except:
                         pass
 
