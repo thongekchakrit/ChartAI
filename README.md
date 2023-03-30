@@ -1,1 +1,11 @@
-# automated-data-analysis
+# Automated Analysis AutoViz
+
+## Introduction
+
+### Methodology
+
+### Result
+
+
+### Conclusion
+

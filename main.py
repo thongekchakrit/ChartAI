@@ -1,6 +1,6 @@
 import streamlit as st
 import utils as utl
-from views import home,about,configuration
+from views import home,home_v2, about,configuration
 
 st.set_page_config(layout="centered", page_title='Automated Data Analysis', page_icon = 'assets/images/favicon.png')
 st.set_option('deprecation.showPyplotGlobalUse', False)
@@ -27,6 +27,8 @@ def navigation():
 
     if route == "home":
         home.load_view()
+    elif route == "home_v2":
+        home_v2.load_view()
     elif route == "about":
         about.load_view()
     elif route == "configuration":
