@@ -12,8 +12,6 @@ def load_view():
         "Uploading a csv, ask a question and gain insights from your data."
     )
 
-    st.warning(os.getcwd())
-
     UPLOADED_FILE = st.file_uploader("Choose a file")
     GPT_SECRETS = st.secrets["gpt_secret"]
     gpt3.openai.api_key = GPT_SECRETS
