@@ -276,10 +276,10 @@ def load_view():
         return query_recommendation, chart_recommendation, x_recommendation, y_recommendation, title_recommendation
 
     @st.cache_data
-    def query_no_result(sample_data_overview, new_question, sql_query):
+    def query_no_result(_sample_data_overview, new_question, sql_query):
 
         prompt = f"You are an actuary, " \
-                 f"Given the csv file sample data with headers: {sample_data_overview}, " \
+                 f"Given the csv file sample data with headers: {_sample_data_overview}, " \
                  f"you have generated no result for the question '{new_question}'. " \
                  f"using the sql query '{sql_query}'. " \
                  f"explain why no result is given? is it missing column?" \
