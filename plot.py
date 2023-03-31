@@ -17,5 +17,14 @@ def plot_metrics(dataframe, label, x_var):
     """
     x_var = x_var.split(",")[0]
 
-    return st.metric(label=label, value=dataframe[x_var].round(2), use_container_width=True)
+    if len(dataframe) > 1:
+        max_value = dataframe[x_var].max().round(2)
+        min_value = dataframe[x_var].min().round(2)
+        value = str(f"Ranges {min_value} to {max_value}")
+    else:
+        value = dataframe[x_var].round(2)
+
+    print(value)
+
+    return st.metric(label=label, value=value)
 

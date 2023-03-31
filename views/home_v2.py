@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import gpt3
 import duckdb
-import plotly
+import plot
 import re
 import os
 
@@ -153,7 +153,7 @@ def load_view():
         return response
 
     @st.cache_data
-    def generate_sql_gpt(data_schema, new_question):
+    def generate_sql_gpt(_data_schema, new_question):
         print("Query: ", new_question)
         prompt = f"""
         
@@ -248,7 +248,7 @@ def load_view():
         
         Context: 
         You are an actuary
-        Given the data with schema: {data_schema}
+        Given the data with schema: {_data_schema}
         
         
         Question: 
@@ -301,13 +301,13 @@ def load_view():
     def get_dataframe_from_duckdb_query(query):
         try:
             # dataframe_new = duckdb.query(query).df().head(50)
-            dataframe_new = duckdb.query(query).df().head(50)
+            dataframe_new = duckdb.query(query).df()
         except:
             dataframe_new = pd.DataFrame()
         return dataframe_new
 
     @st.cache_data
-    def query_text(schema_data, new_question):
+    def query_text(_schema_data, new_question):
 
         # Get the query
         query_recommendation, chart_recommendation, x_recommendation, y_recommendation, title_recommendation = generate_sql_gpt(schema_data, new_question)
@@ -319,7 +319,7 @@ def load_view():
             dataframe_json = dataframe_new.to_json()
             response = explain_result(query_recommendation, new_question, dataframe_json)
         else:
-            response = query_no_result(schema_data, new_question, query_recommendation)
+            response = query_no_result(_schema_data, new_question, query_recommendation)
             chart_recommendation = None
             x_recommendation = None
             y_recommendation = None
@@ -374,8 +374,7 @@ def load_view():
                             print(dataframe_output)
 
                             if chart_recommendation == "st.metric":
-                                x_recommendation = x_recommendation.split(",")[0]
-                                st.metric(label=title_recommendation, value=dataframe_output[x_recommendation].round(2), use_container_width=True)
+                                plot.plot_metrics(dataframe_output, title_recommendation, x_recommendation)
 
                             if chart_recommendation == "st.line_chart":
                                 x_recommendation = x_recommendation.split(",")[0]
@@ -433,8 +432,6 @@ def load_view():
     if UPLOADED_FILE is not None:
         # Create a text element and let the reader know the data is loading.
         DATA, sample_data_overview = load_data(UPLOADED_FILE)
-        DATA = convert_datatype(DATA)
-        schema_data = DATA.dtypes.to_dict().items()
 
         #####################################################
         st.markdown(f"### Overview of the data")
@@ -447,6 +444,9 @@ def load_view():
         # Inspecting summary statistics
         st.subheader('Summary Statistics')
         get_summary_statistics(DATA)
+
+        DATA = convert_datatype(DATA)
+        schema_data = DATA.dtypes.to_dict().items()
 
         with st.sidebar:
             st.markdown("# AutoViZChat💬")
