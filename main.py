@@ -35,3 +35,5 @@ def navigation():
         configuration.load_view()
     elif route == None:
         home.load_view()
+
+navigation()
