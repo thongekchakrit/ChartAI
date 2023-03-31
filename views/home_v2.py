@@ -1,9 +1,13 @@
+import os
+
 import streamlit as st
 import pandas as pd
 import gpt3
 import duckdb
 import plotly
 import re
+import os
+
 def load_view():
     st.markdown("# **Data Analytics AI**")
     st.markdown(
@@ -21,7 +25,7 @@ def load_view():
     gpt3.openai.api_key = GPT_SECRETS
 
     if not UPLOADED_FILE:
-        UPLOADED_FILE = "sample_data.csv"
+        UPLOADED_FILE = "./views/sample_data.csv"
         st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
     # Store the initial value of widgets in session state
@@ -85,6 +89,24 @@ def load_view():
         return dataframe
 
     @st.cache_data
+    def convert_datatype(df):
+        """Automatically detect and convert (in place!) each
+        dataframe column of datatype 'object' to a datetime just
+        when ALL of its non-NaN values can be successfully parsed
+        by pd.to_datetime().  Also returns a ref. to df for
+        convenient use in an expression.
+        """
+        from pandas.errors import ParserError
+        for c in df.columns[df.dtypes=='object']: #don't cnvt num
+            try:
+                df[c]=pd.to_datetime(df[c])
+            except (ParserError,ValueError): #Can't cnvrt some
+                pass # ...so leave whole column as-is unconverted
+
+        df = df.convert_dtypes()
+        return df
+
+    @st.cache_data
     def get_summary_statistics(dataframe):
         with st.spinner(text="In progress..."):
 
@@ -138,7 +160,7 @@ def load_view():
         Example Context: 
         You are an actuary
         Given the data with schema:
-        dict_items([('key', dtype('O')), ('author', dtype('O')), ('date', dtype('O')), ('stars', dtype('int64')), ('title', dtype('O')), ('helpful_yes', dtype('int64')), ('helpful_no', dtype('int64')), ('text', dtype('O'))])
+        dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
         
         
         Example Question: 
@@ -183,7 +205,7 @@ def load_view():
         Example Context: 
         You are an actuary
         Given the data with schema:
-        dict_items([('key', dtype('O')), ('author', dtype('O')), ('date', dtype('O')), ('stars', dtype('int64')), ('title', dtype('O')), ('helpful_yes', dtype('int64')), ('helpful_no', dtype('int64')), ('text', dtype('O'))])
+        dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
         
         
         Example Question: 
@@ -411,6 +433,7 @@ def load_view():
     if UPLOADED_FILE is not None:
         # Create a text element and let the reader know the data is loading.
         DATA, sample_data_overview = load_data(UPLOADED_FILE)
+        DATA = convert_datatype(DATA)
         schema_data = DATA.dtypes.to_dict().items()
 
         #####################################################

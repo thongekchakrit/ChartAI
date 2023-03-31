@@ -4,6 +4,7 @@ import gpt3
 import duckdb
 import plotly
 import re
+import os
 
 def load_view():
     st.markdown("# **Data Analytics AI**")
@@ -11,12 +12,14 @@ def load_view():
         "Uploading a csv, ask a question and gain insights from your data."
     )
 
+    st.warning(os.getcwd())
+
     UPLOADED_FILE = st.file_uploader("Choose a file")
     GPT_SECRETS = st.secrets["gpt_secret"]
     gpt3.openai.api_key = GPT_SECRETS
 
     if not UPLOADED_FILE:
-        UPLOADED_FILE = "sample_data.csv"
+        UPLOADED_FILE = "./views/sample_data.csv"
         st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
     # Store the initial value of widgets in session state
