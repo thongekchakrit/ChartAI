@@ -33,10 +33,9 @@ def plot_metrics(dataframe, label, x_var):
 def create_bar_chart(data, x_var, y_var):
 
     data_chart = data.to_dict('records')
-    key_x = data[x_var].unique()
-    print(key_x)
-
-    print(data_chart)
+    print("data chart", data_chart)
+    print("x_var", x_var)
+    print("y_var", y_var)
 
     nivo.Bar(
         data=data_chart,
@@ -101,23 +100,47 @@ def create_bar_chart(data, x_var, y_var):
 def create_metric_chart(data, x_var, label):
     data_chart = data.to_dict('records')
 
-    print(type(data_chart[0][x_var]))
+    if ('max' in str(data_chart)) & ('min' in str(data_chart)):
+        min_value = None
+        max_value = None
 
-    if 'float' in str(type(data_chart[0][x_var])):
-        data_value = round(data_chart[0][x_var], 2)
+        for key, value in data_chart[0].items():
+            if 'min' in key:
+                min_value = round(value, 2)
+            if 'max' in key:
+                max_value = round(value, 2)
+
+        data_value = str(f"Ranges {min_value} to {max_value}")
+
+        with mui.Typography:
+            html.div(
+                html.p(label),
+                html.p(data_value),
+                css={
+                    "display": "block",
+                    "margin-top": "1em",
+                    "margin-bottom": "1em",
+                    "margin-left": "2em",
+                    "margin-right": "0em"
+                }
+            )
     else:
-        data_value = data_chart[0][x_var]
 
-    with mui.Typography:
-        html.div(
-            html.p(label),
-            html.p(data_value),
-            css={
-                "display": "block",
-                "margin-top": "1em",
-                "margin-bottom": "1em",
-                "margin-left": "2em",
-                "margin-right": "0em"
-            }
-        )
+        if 'float' in str(type(data_chart[0][x_var])):
+            data_value = round(data_chart[0][x_var], 2)
+        else:
+            data_value = data_chart[0][x_var]
+
+        with mui.Typography:
+            html.div(
+                html.p(label),
+                html.p(data_value),
+                css={
+                    "display": "block",
+                    "margin-top": "1em",
+                    "margin-bottom": "1em",
+                    "margin-left": "2em",
+                    "margin-right": "0em"
+                }
+            )
 

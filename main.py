@@ -181,7 +181,8 @@ def generate_sql_gpt(_data_schema, new_question):
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction.
     
     Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric.
+    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
+    IF range of values is asked, recommend st.metrics.
     IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
     IF SQL script select statment has more than 3 columns, recommend st.table.
     
@@ -226,7 +227,8 @@ def generate_sql_gpt(_data_schema, new_question):
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. Please give column names after the transformation.
     
     Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric.
+    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
+    IF range of values is asked, recommend st.metrics.
     IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
     IF SQL script select statment has more than 3 columns, recommend st.table.
     
@@ -269,11 +271,13 @@ def generate_sql_gpt(_data_schema, new_question):
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. Please give column names after the transformation.
     
     Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric.
+    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
+    IF range of values is asked, recommend st.metrics.
     IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
     IF SQL script select statment has more than 3 columns, recommend st.table.
     
-    Recommend the x and y variables for the plot. Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" and y in the tag "<y_var_start>" and "<y_var_end>" .
+    Recommend the x and y variables for the plot. 
+    Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" and y in the tag "<y_var_start>" and "<y_var_end>".
     IF SQL script has 1 column, and chart type is st.metric. put y as None
     IF SQL script has more than 3 columns, and recommend chart type is st.table. put None for x and y.
     Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
@@ -544,7 +548,7 @@ def ask_new_question(sample_question, schema_data):
                         # Show the lastest 5 message
                         # if questions have result print them out
                         st.markdown("**Question: " + st.session_state[index_past][i] + "**")
-                        height_adjustor = len((st.session_state[index_generated][i]).strip())*0.75
+                        height_adjustor = len((st.session_state[index_generated][i]).strip())*0.45
                         st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
                                      height=int(height_adjustor))
                         counter_message_limit += 1
