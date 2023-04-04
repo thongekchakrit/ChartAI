@@ -362,13 +362,14 @@ def query_text(_schema_data, new_question):
         chart_recommendation = None
         x_recommendation = None
         y_recommendation = None
+
     return response, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation
 
 @st.cache_data
-def create_sample_question(_schema_data):
+def create_sample_question(schema_data):
 
     prompt = f"You are an data analyst, " \
-             f"Create 5 questions based on {_schema_data} with less than 10 words per question. Make sure the questions are easy for you to answer" \
+             f"Create 5 questions based on {schema_data} with less than 10 words per question. Make sure the questions are easy for you to answer" \
              f"Put each question in <question_start_1> question <question_end_1>, <question_start_2>, <question_start_3> respectively"
     response = gpt3.gpt_promt_davinci(prompt)
 
@@ -435,20 +436,21 @@ def ask_new_question(sample_question, schema_data):
 
                     output, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key)
 
-                    resp = {
-                        "question": new_question,
-                        "query_recommendation": query_recommendation,
-                        "chart_recommendation": chart_recommendation,
-                        "x_recommendation": x_recommendation,
-                        "y_recommendation": y_recommendation,
-                        "title_recommendation": title_recommendation
-                    }
+                    if chart_recommendation != None:
+                        resp = {
+                            "question": new_question,
+                            "query_recommendation": query_recommendation,
+                            "chart_recommendation": chart_recommendation,
+                            "x_recommendation": x_recommendation,
+                            "y_recommendation": y_recommendation,
+                            "title_recommendation": title_recommendation
+                        }
+                        st.session_state["all_result"].append(resp)
 
-                    print(resp)
 
                     st.session_state[index_past].append(new_question)
                     st.session_state[index_generated].append(output)
-                    st.session_state["all_result"].append(resp)
+
 
         else:
             st.info('Question exists...', icon="⚠️")
@@ -474,30 +476,31 @@ def ask_new_question(sample_question, schema_data):
         for recommendation in st.session_state["all_result"]:
             question = recommendation['question']
             chart_recommendation = recommendation['chart_recommendation']
-            if "bar" in chart_recommendation.lower():
+            if chart_recommendation != None:
+                if "bar" in chart_recommendation.lower():
 
-                # First, build a default layout for every element you want to include in your dashboard
-                item_key = "item_" + str(question)
+                    # First, build a default layout for every element you want to include in your dashboard
+                    item_key = "item_" + str(question)
 
-                if len(layout) > 0:
-                    for layer in layout:
-                        # print("layer number", layer)
-                        if layer['i'] == item_key:
-                            layout = layout + [
-                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
-                            ]
-                        else:
-                            layout = layout + [
-                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
-                            ]
-                else:
-                    layout = layout + [
-                        # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                        dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
-                    ]
-                counter_recommendation += 1
+                    if len(layout) > 0:
+                        for layer in layout:
+                            # print("layer number", layer)
+                            if layer['i'] == item_key:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
+                                ]
+                            else:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                                ]
+                    else:
+                        layout = layout + [
+                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                            dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                        ]
+                    counter_recommendation += 1
 
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
@@ -574,7 +577,7 @@ if UPLOADED_FILE is not None:
         get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
-    schema_data = data_schema.dtypes.to_dict().items()
+    schema_data = str(data_schema.dtypes.to_dict().items())
 
     st.markdown("### AIViz💬")
     st.write("List of sample questions")
