@@ -1,0 +1,13 @@
+credentials:
+  usernames:
+    chakrit:
+      email: thongekchakrit@gmail.com
+      name: Chakrit Thong Ek
+      password: $2b$12$W2ulWygc5YsdfUy7HMB.AOIrAKijS8boZ6pQlU.gkau//bm2ZzgKy # To be replaced with hashed password
+cookie:
+  expiry_days: 30
+  key: WERweWasdw # Must be string
+  name: HAUSHDUAHSDU
+preauthorized:
+  emails:
+    - thongekchakrit@gmail.com

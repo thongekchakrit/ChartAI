@@ -1,63 +1,40 @@
-import streamlit as st
-import pandas as pd
-import altair as alt
+# First, import the elements you need
 
-st.title("Graph Plotting App")
+from streamlit_elements import elements, mui, html
 
-# Get user input for graph data
-data_file = st.file_uploader("Upload a CSV file", type=["csv"])
+with elements("dashboard"):
 
-if data_file is not None:
-    data = pd.read_csv(data_file)
-    st.write("Data preview:")
-    st.write(data.head())
+    # You can create a draggable and resizable dashboard using
+    # any element available in Streamlit Elements.
 
-    # Function to filter data
-    def filter_data(df):
-        filtered_df = df
-        column_names = df.columns
-        for column in column_names:
-            if df[column].dtype == "O":
-                continue
-            if pd.api.types.is_datetime64_any_dtype(df[column].dtype):
-                date_range = st.sidebar.date_input(f"Select {column} range", [df[column].min(), df[column].max()])
-                start_date, end_date = date_range
-                filtered_df = filtered_df[(filtered_df[column] >= start_date) & (filtered_df[column] <= end_date)]
-            else:
-                min_val = st.sidebar.number_input(f"Min {column}", value=df[column].min())
-                max_val = st.sidebar.number_input(f"Max {column}", value=df[column].max())
-                if min_val > max_val:
-                    st.sidebar.error("Please enter a valid range")
-                    continue
-                filtered_df = filtered_df[(filtered_df[column] >= min_val) & (filtered_df[column] <= max_val)]
-        return filtered_df
+    from streamlit_elements import dashboard
 
-    # Get user input for graph type
-    graph_type = st.selectbox("Select graph type", ["Line", "Bar", "Scatter"])
+    # First, build a default layout for every element you want to include in your dashboard
 
-    # Filter data
-    data = filter_data(data)
+    layout = [
+        # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+        dashboard.Item("first_item", 0, 0, 2, 2),
+        dashboard.Item("second_item", 2, 0, 2, 2, isDraggable=False, moved=False),
+        dashboard.Item("third_item", 0, 2, 1, 1, isResizable=False),
+    ]
 
-    # Plot graph based on user input
-    if graph_type == "Line":
-        chart = alt.Chart(data).mark_line().encode(
-            x=st.selectbox("X-axis", list(data.columns)),
-            y=st.selectbox("Y-axis", list(data.columns)),
-            color=st.selectbox("Color", list(data.columns)),
-        ).interactive()
+    # Next, create a dashboard layout using the 'with' syntax. It takes the layout
+    # as first parameter, plus additional properties you can find in the GitHub links below.
 
-    elif graph_type == "Bar":
-        chart = alt.Chart(data).mark_bar().encode(
-            x=st.selectbox("X-axis", list(data.columns)),
-            y=st.selectbox("Y-axis", list(data.columns)),
-            color=st.selectbox("Color", list(data.columns)),
-        ).interactive()
+    with dashboard.Grid(layout):
+        mui.Paper("First item", key="first_item")
+        mui.Paper("Second item (cannot drag)", key="second_item")
+        mui.Paper("Third item (cannot resize)", key="third_item")
 
-    else:
-        chart = alt.Chart(data).mark_point().encode(
-            x=st.selectbox("X-axis", list(data.columns)),
-            y=st.selectbox("Y-axis", list(data.columns)),
-            color=st.selectbox("Color", list(data.columns)),
-        ).interactive()
+    # If you want to retrieve updated layout values as the user move or resize dashboard items,
+    # you can pass a callback to the onLayoutChange event parameter.
 
-    st.altair_chart(chart, use_container_width=True)
+    def handle_layout_change(updated_layout):
+        # You can save the layout in a file, or do anything you want with it.
+        # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
+        print(updated_layout)
+
+    with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+        mui.Paper("First item", key="first_item")
+        mui.Paper("Second item (cannot drag)", key="second_item")
+        mui.Paper("Third item (cannot resize)", key="third_item")

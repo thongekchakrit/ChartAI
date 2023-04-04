@@ -1,13 +1,8 @@
 import os
 
 import streamlit as st
-import altair as alt
 from streamlit_elements import elements, mui, html
-from streamlit_elements import dashboard
-from streamlit_elements import nivo
-from streamlit_elements import sync
 import pandas as pd
-import numpy as np
 import gpt3
 import duckdb
 import plot
@@ -47,8 +42,8 @@ if 'past_normal' not in st.session_state:
 if "disabled_input" not in st.session_state:
     st.session_state["disabled_input"] = False
 
-if "all_result" not in st.session_state:
-    st.session_state["all_result"] = []
+if "sql_results" not in st.session_state:
+    st.session_state["sql_results"] = {}
 
 
 @st.cache_resource
@@ -305,12 +300,12 @@ def explain_result(query_recommendation, new_question, dataframe_json):
     return response
 @st.cache_data
 def get_dataframe_from_duckdb_query(query):
-    try:
-        # dataframe_new = duckdb.query(query).df().head(50)
-        dataframe_new = duckdb.query(query).df()
-    except:
-        dataframe_new = pd.DataFrame()
-    # dataframe_new = duckdb.query(query).df()
+    # try:
+    #     # dataframe_new = duckdb.query(query).df().head(50)
+    #     dataframe_new = duckdb.query(query).df()
+    # except:
+    #     dataframe_new = pd.DataFrame()
+    dataframe_new = duckdb.query(query).df()
 
 
     return dataframe_new
@@ -332,7 +327,7 @@ def query_text(_schema_data, new_question):
         chart_recommendation = None
         x_recommendation = None
         y_recommendation = None
-    return response, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation
+    return response, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, dataframe_new
 
 @st.cache_data
 def create_sample_question(_schema_data):
@@ -395,19 +390,29 @@ def ask_new_question(sample_question, schema_data):
             for key in st.session_state[index_questions]:
                 if new_question == key:
 
-                    output, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key)
+                    output, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, dataframe_output = query_text(schema_data, key)
 
-                    resp = {
-                        "question": new_question,
-                        "query_recommendation": query_recommendation,
-                        "chart_recommendation": chart_recommendation,
-                        "x_recommendation": x_recommendation,
-                        "y_recommendation": y_recommendation
-                    }
+                    print("chart_recommendation: ", chart_recommendation)
+                    print("x_recommendation: ", x_recommendation)
+                    print("y_recommendation: ", y_recommendation)
+                    print(dataframe_output)
+
+                    if chart_recommendation == "st.metric":
+                        plot.plot_metrics(dataframe_output, title_recommendation, x_recommendation)
+
+                    if chart_recommendation == "st.line_chart":
+                        x_recommendation = x_recommendation.split(",")[0]
+                        st.line_chart(data=dataframe_output, x=x_recommendation, y=y_recommendation, use_container_width=True)
+
+                    if chart_recommendation == "st.bar_chart":
+                        x_recommendation = x_recommendation.split(",")[0]
+                        st.bar_chart(data=dataframe_output, x=x_recommendation, y=y_recommendation, use_container_width=True)
+
+                    if chart_recommendation == "st.table":
+                        st.table(data=dataframe_output.head())
 
                     st.session_state[index_past].append(new_question)
                     st.session_state[index_generated].append(output)
-                    st.session_state["all_result"].append(resp)
 
         else:
             st.info('Question exists...', icon="⚠️")
@@ -420,62 +425,6 @@ def ask_new_question(sample_question, schema_data):
             # Reinsert the question and output
             st.session_state[index_past].append(exist_question)
             st.session_state[index_generated].append(exist_output)
-
-    # Plot element dashboard
-    with elements("dashboard"):
-
-        # initialize layout
-        layout = []
-
-        # You can create a draggable and resizable dashboard using
-        for recommendation in st.session_state["all_result"]:
-            question = recommendation['question']
-            chart_recommendation = recommendation['chart_recommendation']
-            if "bar" in chart_recommendation.lower():
-
-                # First, build a default layout for every element you want to include in your dashboard
-                item_key = "item_" + str(question)
-
-                if len(layout) > 0:
-                    for layer in layout:
-                        print("layer number", layer)
-                        if layer['i'] == item_key:
-                            layout = layout + [
-                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
-                            ]
-                else:
-                    layout = layout + [
-                        # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                        dashboard.Item(item_key, 0, 0, 2, 2, isResizable=True, isDraggable=True)
-                    ]
-
-        def handle_layout_change(updated_layout):
-            # You can save the layout in a file, or do anything you want with it.
-            # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-            print("layout updated", updated_layout)
-            return updated_layout
-
-        with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
-            for recommendation in st.session_state["all_result"]:
-                query_recommendation = recommendation['query_recommendation']
-                question = recommendation['question']
-                x_recommendation = recommendation['x_recommendation']
-                y_recommendation = recommendation['y_recommendation']
-                chart_recommendation = recommendation['chart_recommendation']
-                item_key = "item_" + str(question)
-
-                # print(question)
-                # print(x_recommendation)
-                # print(y_recommendation)
-                # print(chart_recommendation)
-                # print(query_recommendation)
-
-                dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
-
-                if "bar" in chart_recommendation.lower():
-                    with mui.Paper(label=question ,elevation=3, variant="outlined", square=True, key=item_key):
-                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation)
 
     counter_non_result = 0
     counter_message_limit = 0
@@ -527,6 +476,43 @@ if UPLOADED_FILE is not None:
     st.markdown("### AIViz💬")
     st.write("List of sample questions")
     col1, col2, col3, col4, col5 = st.columns(5)
+
+    with elements("dashboard"):
+
+        # You can create a draggable and resizable dashboard using
+        # any element available in Streamlit Elements.
+
+        from streamlit_elements import dashboard
+
+        # First, build a default layout for every element you want to include in your dashboard
+
+        layout = [
+            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+            dashboard.Item("first_item", 0, 0, 2, 2),
+            dashboard.Item("second_item", 2, 0, 2, 2, isDraggable=False, moved=False),
+            dashboard.Item("third_item", 0, 2, 1, 1, isResizable=False),
+        ]
+
+        # Next, create a dashboard layout using the 'with' syntax. It takes the layout
+        # as first parameter, plus additional properties you can find in the GitHub links below.
+
+        with dashboard.Grid(layout):
+            mui.Paper("First item", key="first_item")
+            mui.Paper("Second item (cannot drag)", key="second_item")
+            mui.Paper("Third item (cannot resize)", key="third_item")
+
+        # If you want to retrieve updated layout values as the user move or resize dashboard items,
+        # you can pass a callback to the onLayoutChange event parameter.
+
+        def handle_layout_change(updated_layout):
+            # You can save the layout in a file, or do anything you want with it.
+            # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
+            print(updated_layout)
+
+        with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+            mui.Paper("First item", key="first_item")
+            mui.Paper("Second item (cannot drag)", key="second_item")
+            mui.Paper("Third item (cannot resize)", key="third_item")
 
     # Generate 5 sample questions
     sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data)
