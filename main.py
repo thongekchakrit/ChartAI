@@ -1,19 +1,34 @@
-import os
+# import streamlit_authenticator as stauth
 import streamlit as st
-import altair as alt
+# import yaml
+# from yaml.loader import SafeLoader
 from streamlit_elements import elements, mui, html
 from streamlit_elements import dashboard
-from streamlit_elements import nivo
-from streamlit_elements import sync
 from pandas.errors import ParserError
 import pandas as pd
-import numpy as np
+import json
 import gpt3
 import duckdb
 import plot
 import re
 import os
-
+#
+# # Login before displaying of webapp
+# with open('config.yaml') as file:
+#     config = yaml.load(file, Loader=SafeLoader)
+#     print(config)
+#
+# authenticator = stauth.Authenticate(
+#     config['credentials'],
+#     config['cookie']['name'],
+#     config['cookie']['key'],
+#     config['cookie']['expiry_days'],
+#     config['preauthorized']
+# )
+#
+# name, authentication_status, username = authenticator.login('Login', 'main')
+#
+# if authentication_status:
 st.markdown("# **Data Analytics AI**")
 st.markdown(
     "Uploading a csv, ask a question and gain insights from your data."
@@ -356,18 +371,6 @@ def create_sample_question(_schema_data):
     return question_1, question_2, question_3, question_4, question_5
 
 @st.cache_data
-def query_basic(new_question):
-    prompt = f"As an acturary answer the following question:  '{new_question}'."
-    response = gpt3.gpt_promt_davinci(prompt)
-    return response
-
-@st.cache_data
-def show_historical_data(old_question):
-    st.caption(f"Question: {old_question}")
-    dataframe_old = st.session_state['question_dict'][old_question]
-    st.bar_chart(dataframe_old)
-
-@st.cache_data
 def get_raw_table(data):
     st.write(data)
 
@@ -375,6 +378,26 @@ def get_raw_table(data):
 def check_data_have_object(data):
     resp = data.dtypes.to_list()
     return resp
+
+def check_layout_user_exists(username, path="session_layout/layout.json"):
+    is_file_exists = os.path.exists(path)
+    if is_file_exists:
+        with open(path) as f:
+            lines = f.readlines()
+            layout_file = json.loads(str(lines))
+    else:
+        data = {username: []}
+        with open("session_layout/layout.json", "w") as outfile:
+            outfile.write(json.dumps(data, indent=4))
+
+    print("check", layout_file)
+    if len(layout_file) > 0:
+        user_layout = layout_file[username]
+    else:
+        user_layout = []
+
+    return user_layout
+
 
 def ask_new_question(sample_question, schema_data):
     text = st.empty()
@@ -424,6 +447,8 @@ def ask_new_question(sample_question, schema_data):
     with elements("dashboard"):
 
         # initialize layout
+        # check_layout_user_exists(username)
+        counter_recommendation = 0
         layout = []
 
         # You can create a draggable and resizable dashboard using
@@ -443,17 +468,25 @@ def ask_new_question(sample_question, schema_data):
                                 # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
                                 dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
                             ]
+                        else:
+                            layout = layout + [
+                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                            ]
                 else:
                     layout = layout + [
                         # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                        dashboard.Item(item_key, 0, 0, 2, 2, isResizable=True, isDraggable=True)
+                        dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
                     ]
+                counter_recommendation += 1
 
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
             # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
             print("layout updated", updated_layout)
-            return updated_layout
+            # data = {username: updated_layout}
+            # with open("session_layout/sample.json", "w") as outfile:
+            #     outfile.write(json.dumps(data, indent=4))
 
         with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
             for recommendation in st.session_state["all_result"]:
@@ -464,12 +497,7 @@ def ask_new_question(sample_question, schema_data):
                 chart_recommendation = recommendation['chart_recommendation']
                 item_key = "item_" + str(question)
 
-                # print(question)
-                # print(x_recommendation)
-                # print(y_recommendation)
-                # print(chart_recommendation)
-                # print(query_recommendation)
-
+                # Get new dataframe
                 dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
 
                 if "bar" in chart_recommendation.lower():
@@ -554,6 +582,10 @@ if UPLOADED_FILE is not None:
 
     # Generate the ask question bar
     ask_new_question(question, schema_data)
+    # elif authentication_status is False:
+    #     st.error('Username/password is incorrect')
+    # elif authentication_status is None:
+    #     st.warning('Please enter your username and password')
 
 
 

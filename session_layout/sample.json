@@ -1,0 +1,26 @@
+{
+    "chakrit": [
+        {
+            "w": 2,
+            "h": 2,
+            "x": 0,
+            "y": 0,
+            "i": "item_What is the most common region in the dataset?",
+            "moved": false,
+            "static": false,
+            "isDraggable": true,
+            "isResizable": true
+        },
+        {
+            "w": 2,
+            "h": 2,
+            "x": 2,
+            "y": 0,
+            "i": "item_What is the most common sex in the dataset?",
+            "moved": false,
+            "static": false,
+            "isDraggable": true,
+            "isResizable": true
+        }
+    ]
+}
