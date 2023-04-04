@@ -1,11 +1,11 @@
 import os
-
 import streamlit as st
 import altair as alt
 from streamlit_elements import elements, mui, html
 from streamlit_elements import dashboard
 from streamlit_elements import nivo
 from streamlit_elements import sync
+from pandas.errors import ParserError
 import pandas as pd
 import numpy as np
 import gpt3
@@ -95,7 +95,6 @@ def convert_datatype(df):
     by pd.to_datetime().  Also returns a ref. to df for
     convenient use in an expression.
     """
-    from pandas.errors import ParserError
     for c in df.columns[df.dtypes=='object']: #don't cnvt num
         try:
             df[c]=pd.to_datetime(df[c])
