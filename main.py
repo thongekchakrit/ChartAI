@@ -167,7 +167,7 @@ def query(sample_data_overview, new_question):
 
 @st.cache_data
 def generate_sql_gpt(_data_schema, new_question):
-    print("Query: ", new_question)
+    # print("Query: ", new_question)
     prompt = f"""
     
     Example Context: 
@@ -309,12 +309,26 @@ def query_no_result(_sample_data_overview, new_question, sql_query):
     return response
 
 @st.cache_data
-def explain_result(query_recommendation, new_question, dataframe_json):
-    prompt = f"You are an actuary, " \
-             f"Please give a summary of the result in human readable text: " \
-             f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
-             f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
-             f"Do not show the query in the answer."
+def explain_result(query_recommendation, new_question, dataframe_new):
+
+    if len(dataframe_new ) > 50:
+        correlation_matric = dataframe_new.corr().to_json()
+        summary_statistics = dataframe_new.describe().to_json()
+        trimmed_df = dataframe_new.sample(n=50).to_json()
+        prompt = f"You are an actuary, " \
+                 f"Please give a summary of the result in human readable text: " \
+                 f"You are given the correlation metrics {correlation_matric} and the summary statistics {summary_statistics} generated from full dataset" \
+                 f"The randomly sampled data is {trimmed_df}." \
+                 f"Do not show the query in the answer." \
+                 f"Answer the question '{new_question}'"
+    else:
+        dataframe_json = dataframe_new.to_json()
+        prompt = f"You are an actuary, " \
+                 f"Please give a summary of the result in human readable text: " \
+                 f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
+                 f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
+                 f"Do not show the query in the answer."
+
     response = gpt3.gpt_promt_davinci(prompt)
     return response
 @st.cache_data
@@ -326,7 +340,6 @@ def get_dataframe_from_duckdb_query(query):
         dataframe_new = pd.DataFrame()
     # dataframe_new = duckdb.query(query).df()
 
-
     return dataframe_new
 
 @st.cache_data
@@ -335,12 +348,11 @@ def query_text(_schema_data, new_question):
     # Get the query
     query_recommendation, chart_recommendation, x_recommendation, y_recommendation, title_recommendation = generate_sql_gpt(schema_data, new_question)
 
-    print("Query: ", query_recommendation)
+    # print("Query: ", query_recommendation)
     dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
 
     if len(dataframe_new) > 0:
-        dataframe_json = dataframe_new.to_json()
-        response = explain_result(query_recommendation, new_question, dataframe_json)
+        response = explain_result(query_recommendation, new_question, dataframe_new)
     else:
         response = query_no_result(_schema_data, new_question, query_recommendation)
         chart_recommendation = None
@@ -350,7 +362,7 @@ def query_text(_schema_data, new_question):
 
 @st.cache_data
 def create_sample_question(_schema_data):
-    print(_schema_data)
+
     prompt = f"You are an data analyst, " \
              f"Create 5 questions based on {_schema_data} with less than 10 words per question. Make sure the questions are easy for you to answer" \
              f"Put each question in <question_start_1> question <question_end_1>, <question_start_2>, <question_start_3> respectively"
@@ -390,7 +402,7 @@ def check_layout_user_exists(username, path="session_layout/layout.json"):
         with open("session_layout/layout.json", "w") as outfile:
             outfile.write(json.dumps(data, indent=4))
 
-    print("check", layout_file)
+    # print("check", layout_file)
     if len(layout_file) > 0:
         user_layout = layout_file[username]
     else:
@@ -424,8 +436,11 @@ def ask_new_question(sample_question, schema_data):
                         "query_recommendation": query_recommendation,
                         "chart_recommendation": chart_recommendation,
                         "x_recommendation": x_recommendation,
-                        "y_recommendation": y_recommendation
+                        "y_recommendation": y_recommendation,
+                        "title_recommendation": title_recommendation
                     }
+
+                    print(resp)
 
                     st.session_state[index_past].append(new_question)
                     st.session_state[index_generated].append(output)
@@ -435,9 +450,9 @@ def ask_new_question(sample_question, schema_data):
             st.info('Question exists...', icon="⚠️")
             exist_question_index = st.session_state[index_past].index(new_question)
             exist_question = st.session_state[index_past].pop(exist_question_index)
-            print(f"This question exists: {exist_question}")
+            # print(f"This question exists: {exist_question}")
             exist_output = st.session_state[index_generated].pop(exist_question_index)
-            print(f"This output exists: {exist_output}")
+            # print(f"This output exists: {exist_output}")
 
             # Reinsert the question and output
             st.session_state[index_past].append(exist_question)
@@ -462,7 +477,7 @@ def ask_new_question(sample_question, schema_data):
 
                 if len(layout) > 0:
                     for layer in layout:
-                        print("layer number", layer)
+                        # print("layer number", layer)
                         if layer['i'] == item_key:
                             layout = layout + [
                                 # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
@@ -483,7 +498,7 @@ def ask_new_question(sample_question, schema_data):
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
             # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-            print("layout updated", updated_layout)
+            print("Updated Layout", updated_layout)
             # data = {username: updated_layout}
             # with open("session_layout/sample.json", "w") as outfile:
             #     outfile.write(json.dumps(data, indent=4))
@@ -495,14 +510,20 @@ def ask_new_question(sample_question, schema_data):
                 x_recommendation = recommendation['x_recommendation']
                 y_recommendation = recommendation['y_recommendation']
                 chart_recommendation = recommendation['chart_recommendation']
+                title_recommendation = recommendation['title_recommendation']
                 item_key = "item_" + str(question)
 
                 # Get new dataframe
                 dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+                # print(dataframe_new)
 
                 if "bar" in chart_recommendation.lower():
                     with mui.Paper(label=question ,elevation=3, variant="outlined", square=True, key=item_key):
                         plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation)
+                elif "metric" in chart_recommendation.lower():
+                    with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key):
+                        plot.create_metric_chart(dataframe_new, x_recommendation, title_recommendation)
+
 
     counter_non_result = 0
     counter_message_limit = 0
@@ -527,7 +548,7 @@ def ask_new_question(sample_question, schema_data):
                         st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
                                      height=int(height_adjustor))
                         counter_message_limit += 1
-                        print(counter_message_limit)
+                        # print(counter_message_limit)
                 except:
                     pass
 

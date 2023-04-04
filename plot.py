@@ -1,5 +1,6 @@
 import streamlit as st
 from streamlit_elements import nivo
+from streamlit_elements import mui, html
 
 def plot_scatter(dataframe, x_variable, y_variable):
     """
@@ -96,4 +97,27 @@ def create_bar_chart(data, x_var, y_var):
         role="application",
         ariaLabel="Nivo bar chart demo",
     )
+
+def create_metric_chart(data, x_var, label):
+    data_chart = data.to_dict('records')
+
+    print(type(data_chart[0][x_var]))
+
+    if 'float' in str(type(data_chart[0][x_var])):
+        data_value = round(data_chart[0][x_var], 2)
+    else:
+        data_value = data_chart[0][x_var]
+
+    with mui.Typography:
+        html.div(
+            html.p(label),
+            html.p(data_value),
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-left": "2em",
+                "margin-right": "0em"
+            }
+        )
 
