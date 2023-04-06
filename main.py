@@ -709,16 +709,16 @@ if UPLOADED_FILE is not None:
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
     #####################################################
-    # with st.expander("See data explaination"):
-    #     get_data_overview(sample_data_overview)
-    #
-    # # Inspecting raw data
-    # with st.expander("See raw data"):
-    #     get_raw_table(DATA)
-    #
-    # # Inspecting summary statistics
-    # with st.expander("See summary statistics"):
-    #     get_summary_statistics(DATA)
+    with st.expander("See data explaination"):
+        get_data_overview(sample_data_overview)
+
+    # Inspecting raw data
+    with st.expander("See raw data"):
+        get_raw_table(DATA)
+
+    # Inspecting summary statistics
+    with st.expander("See summary statistics"):
+        get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())
