@@ -1,4 +1,5 @@
 import openai
+import streamlit as st
 
 def gpt_promt(message):
     response = openai.ChatCompletion.create(
@@ -16,3 +17,4 @@ def gpt_promt_davinci(message):
         temperature=0.01,
         max_tokens=1000)
     return response.choices[0]['text']
+

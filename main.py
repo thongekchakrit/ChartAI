@@ -6,6 +6,7 @@ from streamlit_elements import elements, mui, html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
 import pandas as pd
+import numpy as np
 import json
 import gpt3
 import duckdb
@@ -31,7 +32,7 @@ import os
 # if authentication_status:
 st.markdown("# **Data Analytics AI**")
 st.markdown(
-    "Uploading a csv, ask a question and gain insights from your data."
+    "Upload a csv, ask a question and gain insights from your data."
 )
 
 UPLOADED_FILE = st.file_uploader("Choose a file")
@@ -42,7 +43,7 @@ SIDE_BAR_PAST_DATASET_INPUT_1 = 'past_normal'
 gpt3.openai.api_key = GPT_SECRETS
 
 if not UPLOADED_FILE:
-    UPLOADED_FILE = "./views/sample_data.csv"
+    UPLOADED_FILE = "archive/views/sample_data.csv"
     st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
 # Store the initial value of widgets in session state
@@ -65,6 +66,9 @@ if "disabled_input" not in st.session_state:
 if "all_result" not in st.session_state:
     st.session_state["all_result"] = []
 
+if 'question_dict' not in st.session_state:
+    st.session_state['question_dict'] = {}
+
 
 @st.cache_resource
 def load_data(UPLOADED_FILE):
@@ -80,19 +84,7 @@ def load_data(UPLOADED_FILE):
     sample_data_overview = header + rows[:10]
     return data, sample_data_overview
 
-@st.cache_data
-def get_data_overview(header):
-    with st.spinner(text="In progress..."):
-        prompt =  f"Format your answer to markdown latex. Use markdown font size 3. " \
-                  f"Please do not include heading or subheading." \
-                  f"Given the csv file with headers: {header} " \
-                  f"You are an actuary, " \
-                  f"Describe what each column means and what the dataset can be used for?"
 
-        response = gpt3.gpt_promt(prompt)
-        st.markdown(response['content'])
-    if 'question_dict' not in st.session_state:
-        st.session_state['question_dict'] = {}
 
 @st.cache_data
 def rename_dataset_columns(dataframe):
@@ -120,36 +112,55 @@ def convert_datatype(df):
     return df
 
 @st.cache_data
+def get_raw_table(data):
+    st.write(data)
+
+@st.cache_data
+def check_data_have_object(data):
+    resp = data.dtypes.to_list()
+    return resp
+
+@st.cache_data
+def get_data_overview(header):
+    prompt =  f"Format your answer to markdown latex. Use markdown font size 3. " \
+              f"Please do not include heading or subheading." \
+              f"Given the csv file with headers: {header} " \
+              f"You are an actuary, " \
+              f"Describe what each column means and what the dataset can be used for?"
+
+    response = gpt3.gpt_promt(prompt)
+    st.markdown(response['content'])
+
+@st.cache_data
 def get_summary_statistics(dataframe):
-    with st.spinner(text="In progress..."):
 
-        # check dataframe dtype
-        dtype_list = check_data_have_object(dataframe)
+    # check dataframe dtype
+    dtype_list = check_data_have_object(dataframe)
 
-        if any(x in dtype_list for x in ['int64', 'float64']):
-            st.info('Numerical dtype detected in data...')
-            description = dataframe.describe()
-            get_raw_table(description)
-            json_description = description.to_json()
-            prompt = f"Format your answer to markdown latex. Use markdown font size 3." \
-                     f"Please do not include heading or subheading." \
-                     f"Given the summary description of the data below: {json_description}, " \
-                     f"You are an actuary, " \
-                     f"Explain the result given in full detail. "
-            response = gpt3.gpt_promt(prompt)
-            st.markdown(response['content'])
+    if any(x in dtype_list for x in ['int64', 'float64']):
+        st.info('Numerical dtype detected in data...')
+        description = dataframe.describe()
+        get_raw_table(description)
+        json_description = description.to_json()
+        prompt = f"Format your answer to markdown latex. Use markdown font size 3." \
+                 f"Please do not include heading or subheading." \
+                 f"Given the summary description of the data below: {json_description}, " \
+                 f"You are an actuary, " \
+                 f"Explain the result given in full detail. "
+        response = gpt3.gpt_promt(prompt)
+        st.markdown(response['content'])
 
-        if any(x in dtype_list for x in ['O']):
-            st.info('Numerical dtype detected in data...')
-            description_objects = dataframe.describe(include=['O'])
-            get_raw_table(description_objects)
-            prompt_2 =  f"Format your answer to markdown latex. Use markdown font size 3." \
-                        f"Please do not include heading or subheading." \
-                        f"Given the summary description of the data below of categorical data: {description_objects}, " \
-                        f"You are an actuary, " \
-                        f"explain the result given in full detail "
-            response = gpt3.gpt_promt(prompt_2)
-            st.markdown(response['content'])
+    if any(x in dtype_list for x in ['O']):
+        st.info('Numerical dtype detected in data...')
+        description_objects = dataframe.describe(include=['O'])
+        get_raw_table(description_objects)
+        prompt_2 =  f"Format your answer to markdown latex. Use markdown font size 3." \
+                    f"Please do not include heading or subheading." \
+                    f"Given the summary description of the data below of categorical data: {description_objects}, " \
+                    f"You are an actuary, " \
+                    f"explain the result given in full detail "
+        response = gpt3.gpt_promt(prompt_2)
+        st.markdown(response['content'])
 
 
 @st.cache_data
@@ -171,133 +182,190 @@ def generate_sql_gpt(_data_schema, new_question):
     prompt = f"""
     
     Example Context: 
-    You are an actuary
+    You are a data analyst
     Given the data with schema:
-    dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
-    
+    dict_items([('key', string[python]), ('author', string[python]), ('date', dtype('<M8[ns]')), ('stars', Int64Dtype()), ('title', string[python]), ('helpful_yes', Int64Dtype()), ('helpful_no', Int64Dtype()), ('text', string[python])])
     
     Example Question: 
-    write me an SQL script that can answer the following question: "how many authors are there in the year 2022". 
-    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction.
+    Write me an  SQL script in duckDB language that can answer the following question: "How many authors are there in the year 2022?". 
+    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
+    Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
     
-    Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
-    IF range of values is asked, recommend st.metrics.
-    IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
-    IF SQL script select statment has more than 3 columns, recommend st.table.
-    
-    
-    Recommend the x and y variables for the plot. Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" and y in the tag "<y_var_start>" and "<y_var_end>" .
-    IF SQL script has 1 column, and chart type is st.metric. put y as None
-    IF SQL script has more than 3 columns, and recommend chart type is st.table. put None for x and y.
-    Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
-    
-    Example Answer: 
+    Answer: 
     <sql_start>
     SELECT COUNT(DISTINCT author) as author_count, date
     FROM DATA
     WHERE YEAR(date) = 2022
     <sql_end>
     
-    <chart_start>
-    st.bar_chart
-    <chart_end>
-    
-    <x_var_start>
-    date
-    <x_var_end>
-    
-    <y_var_start>
-    author_count
-    <y_var_end>
-    
-    <title_start>
-    The count of authors over date
-    <title_end>
-    
-    
     Example Context: 
-    You are an actuary
+    You are a data analyst
     Given the data with schema:
     dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
-    
-    
+   
     Example Question: 
-    Write me an SQL script that can answer the following question: "how many authors are there?". 
-    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. Please give column names after the transformation.
+    Write me an  SQL script in duckDB language that can answer the following question: "What is the distribution of age and sex of people in southeast region?". 
+    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
+    Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
     
-    Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
-    IF range of values is asked, recommend st.metrics.
-    IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
-    IF SQL script select statment has more than 3 columns, recommend st.table.
-    
-    Recommend the x and y variables for the plot. Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" and y in the tag "<y_var_start>" and "<y_var_end>" .
-    IF SQL script has 1 column, and chart type is st.metric. put y as None
-    IF SQL script has more than 3 columns, and recommend chart type is st.table. put None for x and y.
-    Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
-    
-    
-    Example Answer: 
+    Answer: 
     <sql_start>
-    SELECT COUNT(DISTINCT author) as author_count
+    SELECT age, sex, COUNT(*) as count
     FROM DATA
+    WHERE region = 'southeast'
+    GROUP BY age, sex
     <sql_end>
     
-    <chart_start>
-    st.metric
-    <chart_end>
-    
-    <x_var_start>
-    author_count
-    <x_var_end>
-    
-    <y_var_start>
-    None
-    <y_var_end>
-    
-    <title_start>
-    The count of authors
-    <title_end>
-
-    
     Context: 
-    You are an actuary
-    Given the data with schema: {_data_schema}
-    
+    You are a data analyst
+    Given the data with schema: 
+    {_data_schema}
     
     Question: 
-    Write me an SQL script that can answer the following question: "{new_question}". 
-    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. Please give column names after the transformation.
-    
-    Recommend a chart plot using Streamlit (st) charting.  Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>". 
-    IF SQL script has 1 column, recommend st.metric unless max and min range of values is asked.
-    IF range of values is asked, recommend st.metrics.
-    IF SQL script has 2 columns, recommend st.barchart, or st.line_chart based on schema of SQL column.
-    IF SQL script select statment has more than 3 columns, recommend st.table.
-    
-    Recommend the x and y variables for the plot. 
-    Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" and y in the tag "<y_var_start>" and "<y_var_end>".
-    IF SQL script has 1 column, and chart type is st.metric. put y as None
-    IF SQL script has more than 3 columns, and recommend chart type is st.table. put None for x and y.
-    Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
+    Write me an SQL script in duckDB language that can answer the following question:  {new_question}
+    Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
+    Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
     
     """
     response = gpt3.gpt_promt_davinci(prompt)
     try:
         query_recommendation = re.search(r"<sql_start>(.*)<sql_end>", response.replace("\n", ' ')).group(1).strip()
+    except:
+        query_recommendation = None
+
+    return query_recommendation
+
+@st.cache_data
+def query_chart_recommendation(_data_schema, new_question, recommened_query, number_of_records):
+    prompt = f""" The schema of the data:
+        dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
+        
+        The data with the schema was transformed using:
+
+        SELECT charges, region
+        FROM DATA
+        WHERE region = 'Southwest'
+        AND charges < 100 OR charges > 10000
+        
+        Total number of records: 650
+
+        Based on the question: "Given that I expect the medical charge to be around 100 to 10000 in the southwest region, what is the outlier of the charges in the southwest region?" and the query above, 
+        recommend me a graph that can be used to best represent the question and the SQL generated.
+        If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
+        Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
+        
+        Recommend the x and y variables for the plot.
+        Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
+        y in the tag "<y_var_start>" and "<y_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+
+        Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
+        
+        <chart_start>box plot<chart_end>
+        <x_var_start>region<x_var_end>
+        <y_var_start>charges<y_var_end>
+        <hue_var_start>None<hue_var_end>
+        <title_start>Outliers of Medical Charges in the Southwest Region<title_end>
+
+        The schema of the data:
+        dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
+        
+        The data with the schema was transformed using:
+    
+        SELECT age, sex, COUNT(*) as count
+        FROM DATA
+        WHERE region = 'southeast'
+        GROUP BY age, sex
+        
+        Total number of records: 124
+
+        Based on the question: "What is the distribution of age and sex of people in southeast region??" and the query above, 
+        recommend me a graph that can be used to best represent the question and the SQL generated.
+        If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
+        Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
+        
+        Recommend the x and y variables for the plot.
+        Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
+        y in the tag "<y_var_start>" and "<y_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+
+        Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>"
+        
+        <chart_start>bar plot<chart_end>
+        <x_var_start>age<x_var_end>
+        <y_var_start>count<y_var_end>
+        <hue_var_start>sex<hue_var_end>
+        <title_start>Distribution of Age and Sex of People in Southeast Region<title_end>
+        
+        The schema of the data:
+        dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
+        
+        The data with the schema was transformed using:
+
+        SELECT AVG(age) as avg_age
+        FROM DATA
+        
+        Total number of records: 1
+
+        Based on the question: "What is the average age of the people in the dataset?" and the query above, 
+        recommend me a graph that can be used to best represent the question and the SQL generated.
+        If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
+        Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
+        
+        Recommend the x and y variables for the plot.
+        Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
+        y in the tag "<y_var_start>" and "<y_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+
+        Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
+        
+        <chart_start>metric<chart_end>
+        <x_var_start>avg_age<x_var_end>
+        <y_var_start>None<y_var_end>
+        <hue_var_start>None<hue_var_end>
+        <title_start>Average Age of People in the Dataset<title_end>
+        
+        The schema of the data:
+        {_data_schema}
+        
+        The data with the schema was transformed using:
+    
+        {recommened_query}
+        
+        Total number of records: {number_of_records}
+
+        Based on the question: {new_question} and the query above, 
+        recommend me a graph that can be used to best represent the question and the SQL generated.
+        If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
+        Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
+        
+        Recommend the x and y variables for the plot.
+        Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
+        y in the tag "<y_var_start>" and "<y_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+
+        Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>"
+
+        """
+
+    print(prompt)
+
+    response = gpt3.gpt_promt_davinci(prompt)
+
+    try:
         chart_recommendation = re.search(r"<chart_start>(.*)<chart_end>", response.replace("\n", ' ')).group(1).strip()
         x_recommendation = re.search(r"<x_var_start>(.*)<x_var_end>", response.replace("\n", ' ')).group(1).strip()
         y_recommendation = re.search(r"<y_var_start>(.*)<y_var_end>", response.replace("\n", ' ')).group(1).strip()
+        hue_recommendation = re.search(r"<hue_var_start>(.*)<hue_var_end>", response.replace("\n", ' ')).group(1).strip()
         title_recommendation = re.search(r"<title_start>(.*)<title_end>", response.replace("\n", ' ')).group(1).strip()
     except:
-        query_recommendation = None
         chart_recommendation = None
         x_recommendation = None
         y_recommendation = None
+        hue_recommendation = None
         title_recommendation = None
 
-    return query_recommendation, chart_recommendation, x_recommendation, y_recommendation, title_recommendation
+    return chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation
 
 @st.cache_data
 def query_no_result(_sample_data_overview, new_question, sql_query):
@@ -313,63 +381,136 @@ def query_no_result(_sample_data_overview, new_question, sql_query):
     return response
 
 @st.cache_data
+def recursion_batch(list_of_df, list_of_result, new_question, query_recommendation):
+    '''
+    :param query_recommendation: The query that was created by GPT3 API
+    :param new_question: The question that was asked by the user
+    :param dataframe_new: The dataframe that was created in DuckDB with the query generated by GPT3
+    :param list_of_result: Empty list to store the result from chat gpt
+    :return: Recursive response from chat GPT
+    '''
+
+    print("Recursive batch length: ", len(list_of_df[0].to_json()))
+    print("Recursive batch: ", list_of_df[0])
+    print("Length: ", len(list_of_result))
+    print("Content: ", list_of_result)
+    if len(list_of_df) <= 10:
+        if len(list_of_df) < 2:
+            dataframe_json = list_of_df[0].to_json()
+            prompt = f"You are an actuary, " \
+                     f"Please give a report and insights of the result in human readable text: " \
+                     f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
+                     f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
+                     f"Do not show the query in the answer."
+            list_of_result = list_of_result + [gpt3.gpt_promt_davinci(prompt)]
+            return list_of_result
+        else:
+            dataframe_json = list_of_df[0].to_json()
+            prompt = f"You are an actuary, " \
+                     f"Please give a report and insights of the result in human readable text: " \
+                     f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
+                     f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
+                     f"Do not show the query in the answer."
+            list_of_result = list_of_result + [gpt3.gpt_promt_davinci(prompt)]
+            new_list = list_of_df[1:]
+            return recursion_batch(new_list, list_of_result, new_question, query_recommendation)
+    else:
+        st.error('Performing huge data set analysis is disabled for now...')
+        return None
+
+@st.cache_data
+def recursive_summarizer_sub(list_of_response, new_question):
+
+    if len(list_of_response) < 2:
+        data = '\n'.join(list_of_response)
+        return data
+    else:
+        # if len('\n'.join(list_of_response)) < 4000:
+        #     data = '\n'.join(list_of_response)
+        # else:
+        pass
+
+        # data = '\n'.join(list_of_response)
+        # print("Question in recursive_summarizer_sub: ", new_question)
+        # print("Answer in data: ", data)
+        # prompt = f"Give a report on the passage to answer the question: {new_question}." \
+        #          f"The passage: {data}"
+        # print(f"Prompt being asked: {prompt}")
+        # list_of_result = [gpt3.gpt_promt_davinci(prompt)]
+        # print(f"Answer: {list_of_result}")
+        # return '\n'.join(list_of_result)
+        #     raise
+    #     response_extract = list_of_response[0]
+    #     prompt = f"You are an actuary" \
+    #              f"The main goal is to answer {new_question}" \
+    #              f"Please summarize the passage:" \
+    #              f"{response_extract}"
+    #     list_of_result = list_of_summarize_text + [gpt3.gpt_promt_davinci(prompt)]
+    #     new_list = list_of_response[1:]
+    #     return recursion_batch(new_list, list_of_result)
+
+# def recursive_summarizer_main(response, list_of_response, new_question):
+#     if len(response) < 2:
+#         return response[0]
+#     else:
+#         list_of_summarize_text = []
+#         response = recursive_summarizer_sub(response, list_of_summarize_text, new_question)
+#         return recursive_summarizer_main(response, list_of_response, new_question)
+
+@st.cache_data
 def explain_result(query_recommendation, new_question, dataframe_new):
 
-    if len(dataframe_new ) > 50:
-        correlation_matric = dataframe_new.corr().to_json()
-        summary_statistics = dataframe_new.describe().to_json()
-        trimmed_df = dataframe_new.sample(n=50).to_json()
-        prompt = f"You are an actuary, " \
-                 f"Please give a summary of the result in human readable text: " \
-                 f"You are given the correlation metrics {correlation_matric} and the summary statistics {summary_statistics} generated from full dataset" \
-                 f"The randomly sampled data is {trimmed_df}." \
-                 f"Do not show the query in the answer." \
-                 f"Answer the question '{new_question}'"
-    else:
-        dataframe_json = dataframe_new.to_json()
-        prompt = f"You are an actuary, " \
-                 f"Please give a summary of the result in human readable text: " \
-                 f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
-                 f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
-                 f"Do not show the query in the answer."
+    batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
+    print(f"Batch size: {batch_size}")
+    list_of_df = np.array_split(dataframe_new, batch_size)
+    # sample data to first 10 dataframe to get result, to remove in prod
+    list_of_df = list_of_df[:2]
+    list_of_result = []
 
-    response = gpt3.gpt_promt_davinci(prompt)
+    with st.spinner("Working on the analysis, please wait..."):
+        response = recursion_batch(list_of_df, list_of_result, new_question, query_recommendation)
+
+    if response:
+        st.success('Done!')
+        response = recursive_summarizer_sub(response, new_question)
+
     return response
+
 @st.cache_data
 def get_dataframe_from_duckdb_query(query):
     try:
-        # dataframe_new = duckdb.query(query).df().head(50)
         dataframe_new = duckdb.query(query).df()
     except:
         dataframe_new = pd.DataFrame()
-    # dataframe_new = duckdb.query(query).df()
-
+    print(dataframe_new)
     return dataframe_new
 
 @st.cache_data
 def query_text(_schema_data, new_question):
-
+    print("Querying the GPT...")
     # Get the query
-    query_recommendation, chart_recommendation, x_recommendation, y_recommendation, title_recommendation = generate_sql_gpt(schema_data, new_question)
-
-    # print("Query: ", query_recommendation)
+    query_recommendation = generate_sql_gpt(schema_data, new_question)
     dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+    chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = query_chart_recommendation(schema_data, new_question, query_recommendation, len(dataframe_new))
 
     if len(dataframe_new) > 0:
         response = explain_result(query_recommendation, new_question, dataframe_new)
+        print("Response", response)
     else:
         response = query_no_result(_schema_data, new_question, query_recommendation)
         chart_recommendation = None
         x_recommendation = None
         y_recommendation = None
+        hue_recommendation = None
+        title_recommendation = None
 
-    return response, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation
+    return response, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation
 
 @st.cache_data
 def create_sample_question(schema_data):
 
     prompt = f"You are an data analyst, " \
-             f"Create 5 questions based on {schema_data} with less than 10 words per question. Make sure the questions are easy for you to answer" \
+             f"Create 5 random questions based on {schema_data} with less than 20 words per question. Make sure the questions are easy for you to answer" \
              f"Put each question in <question_start_1> question <question_end_1>, <question_start_2>, <question_start_3> respectively"
     response = gpt3.gpt_promt_davinci(prompt)
 
@@ -434,7 +575,7 @@ def ask_new_question(sample_question, schema_data):
             for key in st.session_state[index_questions]:
                 if new_question == key:
 
-                    output, chart_recommendation, x_recommendation, y_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key)
+                    output, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key)
 
                     if chart_recommendation != None:
                         resp = {
@@ -443,10 +584,12 @@ def ask_new_question(sample_question, schema_data):
                             "chart_recommendation": chart_recommendation,
                             "x_recommendation": x_recommendation,
                             "y_recommendation": y_recommendation,
+                            "hue_recommendation": hue_recommendation,
                             "title_recommendation": title_recommendation
                         }
                         st.session_state["all_result"].append(resp)
 
+                        print("Summary results: \n", resp)
 
                     st.session_state[index_past].append(new_question)
                     st.session_state[index_generated].append(output)
@@ -516,20 +659,22 @@ def ask_new_question(sample_question, schema_data):
                 question = recommendation['question']
                 x_recommendation = recommendation['x_recommendation']
                 y_recommendation = recommendation['y_recommendation']
+                hue_recommendation = recommendation['hue_recommendation']
                 chart_recommendation = recommendation['chart_recommendation']
                 title_recommendation = recommendation['title_recommendation']
                 item_key = "item_" + str(question)
 
                 # Get new dataframe
                 dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
-                # print(dataframe_new)
+                mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
 
                 if "bar" in chart_recommendation.lower():
-                    with mui.Paper(label=question ,elevation=3, variant="outlined", square=True, key=item_key):
-                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation)
+                    with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
+
                 elif "metric" in chart_recommendation.lower():
-                    with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key):
-                        plot.create_metric_chart(dataframe_new, x_recommendation, title_recommendation)
+                        with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                            plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
 
 
     counter_non_result = 0
@@ -555,7 +700,6 @@ def ask_new_question(sample_question, schema_data):
                         st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
                                      height=int(height_adjustor))
                         counter_message_limit += 1
-                        # print(counter_message_limit)
                 except:
                     pass
 
@@ -565,16 +709,16 @@ if UPLOADED_FILE is not None:
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
     #####################################################
-    with st.expander("See data explaination"):
-        get_data_overview(sample_data_overview)
-
-    # Inspecting raw data
-    with st.expander("See raw data"):
-        get_raw_table(DATA)
-
-    # Inspecting summary statistics
-    with st.expander("See summary statistics"):
-        get_summary_statistics(DATA)
+    # with st.expander("See data explaination"):
+    #     get_data_overview(sample_data_overview)
+    #
+    # # Inspecting raw data
+    # with st.expander("See raw data"):
+    #     get_raw_table(DATA)
+    #
+    # # Inspecting summary statistics
+    # with st.expander("See summary statistics"):
+    #     get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())

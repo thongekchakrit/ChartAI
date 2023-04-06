@@ -30,23 +30,36 @@ def plot_metrics(dataframe, label, x_var):
 
     return st.metric(label=label, value=value)
 
-def create_bar_chart(data, x_var, y_var):
+def create_bar_chart(data, x_var, y_var, hue_var, label):
+
+    with mui.Typography:
+        html.div(
+            html.p(label),
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-left": "2em",
+                "margin-right": "0em"
+            }
+        )
 
     data_chart = data.to_dict('records')
     print("data chart", data_chart)
     print("x_var", x_var)
     print("y_var", y_var)
+    print("hue_var", hue_var)
 
     nivo.Bar(
         data=data_chart,
         layout="vertical",
         keys=[y_var],
         indexBy=x_var,
-        margin={ "top": 20, "right": 130, "bottom": 50, "left": 60 },
+        margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
         padding={0.4},
-        valueScale={ "type": 'linear' },
-        indexScale={ "type": 'band', "round": "true" },
-        colors={ "scheme": 'pastel1' },
+        valueScale={"type": 'linear'},
+        indexScale={"type": 'band', "round": "true"},
+        colors={"scheme": 'pastel1'},
         borderColor={
             "from": 'color',
             "modifiers": [
@@ -56,17 +69,23 @@ def create_bar_chart(data, x_var, y_var):
                 ]
             ]
         },
-        axisTop={"null"},
-        labelSkipWidth={12},
-        labelSkipHeight={12},
-        labelTextColor={
-            "from": 'color',
-            "modifiers": [
-                [
-                    'darker',
-                    1.6
-                ]
-            ]
+        axisBottom={
+            'orient': 'bottom',
+            "tickSize": 5,
+            "tickPadding": 5,
+            "tickRotation": 0,
+            "legend": str(x_var),
+            "legendPosition": 'middle',
+            "legendOffset": 32
+        },
+        axisLeft={
+            'orient': 'left',
+            "tickSize": 5,
+            "tickPadding": 5,
+            "tickRotation": 0,
+            "legend": str(y_var),
+            "legendPosition": 'middle',
+            "legendOffset": -40
         },
         legends=[
             {
@@ -94,11 +113,16 @@ def create_bar_chart(data, x_var, y_var):
             }
         ],
         role="application",
-        ariaLabel="Nivo bar chart demo",
+        ariaLabel=label,
     )
 
-def create_metric_chart(data, x_var, label):
+def create_metric_chart(data, x_var, y_var, label):
     data_chart = data.to_dict('records')
+
+    if x_var:
+        x_var = x_var
+    else:
+        x_var = y_var
 
     if ('max' in str(data_chart)) & ('min' in str(data_chart)):
         min_value = None
@@ -139,8 +163,10 @@ def create_metric_chart(data, x_var, label):
                     "display": "block",
                     "margin-top": "1em",
                     "margin-bottom": "1em",
-                    "margin-left": "2em",
-                    "margin-right": "0em"
+                    "margin-left": "1em",
+                    "margin-right": "0em",
+                    "flex": 1,
+                    "minHeight": 0
                 }
             )
 

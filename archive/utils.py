@@ -1,12 +1,11 @@
 import streamlit as st
-import base64
 from streamlit.components.v1 import html
 
-from PATHS import NAVBAR_PATHS
+from archive.PATHS import NAVBAR_PATHS
 
 
 def inject_custom_css():
-    with open('assets/styles.css') as f:
+    with open('../assets/styles.css') as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 
