@@ -5,6 +5,7 @@ import streamlit as st
 from streamlit_elements import elements, mui, html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
+import altair as alt
 import pandas as pd
 import numpy as np
 import json
@@ -13,6 +14,8 @@ import duckdb
 import plot
 import re
 import os
+import random
+
 #
 # # Login before displaying of webapp
 # with open('config.yaml') as file:
@@ -204,16 +207,14 @@ def generate_sql_gpt(_data_schema, new_question):
     dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
    
     Example Question: 
-    Write me an  SQL script in duckDB language that can answer the following question: "What is the distribution of age and sex of people in southeast region?". 
+    Write me an  SQL script in duckDB language that can answer the following question: " What is the correlation between BMI and charges??". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
     
     Answer: 
     <sql_start>
-    SELECT age, sex, COUNT(*) as count
+    SELECT CORR(charges, bmi) as correlation 
     FROM DATA
-    WHERE region = 'southeast'
-    GROUP BY age, sex
     <sql_end>
     
     Context: 
@@ -394,7 +395,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     print("Recursive batch: ", list_of_df[0])
     print("Length: ", len(list_of_result))
     print("Content: ", list_of_result)
-    if len(list_of_df) <= 10:
+    if len(list_of_df) <= 3:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
             prompt = f"You are an actuary, " \
@@ -416,7 +417,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
             return recursion_batch(new_list, list_of_result, new_question, query_recommendation)
     else:
         st.error('Performing huge data set analysis is disabled for now...')
-        return None
+        return "Sorry, we've disabled huge processing of large file insights for now..."
 
 @st.cache_data
 def recursive_summarizer_sub(list_of_response, new_question):
@@ -489,7 +490,7 @@ def get_dataframe_from_duckdb_query(query):
 def query_text(_schema_data, new_question):
     print("Querying the GPT...")
     # Get the query
-    query_recommendation = generate_sql_gpt(schema_data, new_question)
+    query_recommendation = re.sub(" +", " ", generate_sql_gpt(schema_data, new_question))
     dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
     chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = query_chart_recommendation(schema_data, new_question, query_recommendation, len(dataframe_new))
 
@@ -507,19 +508,28 @@ def query_text(_schema_data, new_question):
     return response, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation
 
 @st.cache_data
-def create_sample_question(schema_data):
+def create_sample_question(schema_data, data):
+
+    summary_statistics = data.describe()
+    corr_data = data.corr()
 
     prompt = f"You are an data analyst, " \
-             f"Create 5 random questions based on {schema_data} with less than 20 words per question. Make sure the questions are easy for you to answer" \
-             f"Put each question in <question_start_1> question <question_end_1>, <question_start_2>, <question_start_3> respectively"
+             f"Create 50 questions based on data using the schema {schema_data} and" \
+             f"summary statistics: {summary_statistics} and" \
+             f"correlation statistics: {corr_data}." \
+             f"Put each question in <question_start> your generated question <question_end>." \
+
     response = gpt3.gpt_promt_davinci(prompt)
 
     try:
-        question_1 = re.search(r"<question_start_1>(.*)<question_end_1>", response.replace("\n", ' ')).group(1).strip()
-        question_2 = re.search(r"<question_start_2>(.*)<question_end_2>", response.replace("\n", ' ')).group(1).strip()
-        question_3 = re.search(r"<question_start_3>(.*)<question_end_3>", response.replace("\n", ' ')).group(1).strip()
-        question_4 = re.search(r"<question_start_4>(.*)<question_end_4>", response.replace("\n", ' ')).group(1).strip()
-        question_5 = re.search(r"<question_start_5>(.*)<question_end_5>", response.replace("\n", ' ')).group(1).strip()
+        questions = re.findall("<question_start>(.*?)<question_end>", response.replace("\n", ' '))
+        n = 5
+        random_choice = random.choices(questions, k=n)
+        question_1 = random_choice[0]
+        question_2 = random_choice[1]
+        question_3 = random_choice[2]
+        question_4 = random_choice[3]
+        question_5 = random_choice[4]
     except:
         question_1 = None
         question_2 = None
@@ -592,7 +602,11 @@ def ask_new_question(sample_question, schema_data):
                         print("Summary results: \n", resp)
 
                     st.session_state[index_past].append(new_question)
-                    st.session_state[index_generated].append(output)
+                    output_template = f"""
+                    {output} \n\n Query:\n{query_recommendation}
+                    """
+
+                    st.session_state[index_generated].append(output_template)
 
 
         else:
@@ -645,6 +659,31 @@ def ask_new_question(sample_question, schema_data):
                         ]
                     counter_recommendation += 1
 
+                if "scatter" in chart_recommendation.lower():
+
+                    # First, build a default layout for every element you want to include in your dashboard
+                    item_key = "item_" + str(question)
+
+                    if len(layout) > 0:
+                        for layer in layout:
+                            # print("layer number", layer)
+                            if layer['i'] == item_key:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
+                                ]
+                            else:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                                ]
+                    else:
+                        layout = layout + [
+                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                            dashboard.Item(item_key, 0, counter_recommendation, 4, 3, isResizable=True, isDraggable=True)
+                        ]
+                    counter_recommendation += 1
+
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
             # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
@@ -669,13 +708,16 @@ def ask_new_question(sample_question, schema_data):
                 mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
 
                 if "bar" in chart_recommendation.lower():
-                    with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
 
                 elif "metric" in chart_recommendation.lower():
-                        with mui.Paper(label=question ,elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                            plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
 
+                if "scatter" in chart_recommendation.lower():
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
 
     counter_non_result = 0
     counter_message_limit = 0
@@ -696,7 +738,7 @@ def ask_new_question(sample_question, schema_data):
                         # Show the lastest 5 message
                         # if questions have result print them out
                         st.markdown("**Question: " + st.session_state[index_past][i] + "**")
-                        height_adjustor = len((st.session_state[index_generated][i]).strip())*0.45
+                        height_adjustor = len((st.session_state[index_generated][i]).strip())*0.5
                         st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
                                      height=int(height_adjustor))
                         counter_message_limit += 1
@@ -709,16 +751,16 @@ if UPLOADED_FILE is not None:
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
     #####################################################
-    with st.expander("See data explaination"):
-        get_data_overview(sample_data_overview)
-
-    # Inspecting raw data
-    with st.expander("See raw data"):
-        get_raw_table(DATA)
-
-    # Inspecting summary statistics
-    with st.expander("See summary statistics"):
-        get_summary_statistics(DATA)
+    # with st.expander("See data explaination"):
+    #     get_data_overview(sample_data_overview)
+    #
+    # # Inspecting raw data
+    # with st.expander("See raw data"):
+    #     get_raw_table(DATA)
+    #
+    # # Inspecting summary statistics
+    # with st.expander("See summary statistics"):
+    #     get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())
@@ -728,7 +770,12 @@ if UPLOADED_FILE is not None:
     col1, col2, col3, col4, col5 = st.columns(5)
 
     # Generate 5 sample questions
-    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data)
+    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+    # sample_question_1 = "What us the average age of the people in the dataset?"
+    # sample_question_2 = "What is the most common sex in the dataset?"
+    # sample_question_3 = "What is the average BMI of the people in the dataset?"
+    # sample_question_4 = "What is the average number of children in the dataset?"
+    # sample_question_5 = "What is the most common region in the dataset?"
     question = None
 
     # Create the sample questions columns
