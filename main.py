@@ -514,17 +514,19 @@ def create_sample_question(schema_data, data):
     corr_data = data.corr()
 
     prompt = f"You are an data analyst, " \
-             f"Generate me 10 questions based on data using the schema {schema_data} and" \
+             f"Generate me 50 questions based on data using the schema {schema_data}, use " \
              f"summary statistics: {summary_statistics} and" \
-             f"correlation statistics: {corr_data}." \
-             f"Put each question in <question_start> your generated question <question_end>." \
+             f"correlation statistics: {corr_data}. to generate more questions" \
+             f"Put each question in <question_start> your generated question <question_end>."
 
     response = gpt3.gpt_promt_davinci(prompt)
+
+    print(response)
 
     try:
         questions = re.findall("<question_start>(.*?)<question_end>", response.replace("\n", ' '))
         n = 5
-        random_choice = random.choices(questions, k=n)
+        random_choice = random.sample(questions, k=n)
         question_1 = random_choice[0]
         question_2 = random_choice[1]
         question_3 = random_choice[2]
@@ -536,6 +538,8 @@ def create_sample_question(schema_data, data):
         question_3 = None
         question_4 = None
         question_5 = None
+
+
     return question_1, question_2, question_3, question_4, question_5
 
 @st.cache_data
