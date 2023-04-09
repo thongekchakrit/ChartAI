@@ -521,8 +521,6 @@ def create_sample_question(schema_data, data):
 
     response = gpt3.gpt_promt_davinci(prompt)
 
-    print(response)
-
     try:
         questions = re.findall("<question_start>(.*?)<question_end>", response.replace("\n", ' '))
         n = 5
