@@ -514,7 +514,7 @@ def create_sample_question(schema_data, data):
     corr_data = data.corr()
 
     prompt = f"You are an data analyst, " \
-             f"Create 50 questions based on data using the schema {schema_data} and" \
+             f"Generate me 10 questions based on data using the schema {schema_data} and" \
              f"summary statistics: {summary_statistics} and" \
              f"correlation statistics: {corr_data}." \
              f"Put each question in <question_start> your generated question <question_end>." \
