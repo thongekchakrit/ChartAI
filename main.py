@@ -258,7 +258,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         Recommend the x and y variables for the plot.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
         y in the tag "<y_var_start>" and "<y_var_end>" .
-        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>".
+        Put numerical value for x and y. categorical value in hue.
 
         Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
         
@@ -289,6 +290,7 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
         y in the tag "<y_var_start>" and "<y_var_end>" .
         hue/class in "<hue_var_start>" and "<hue_var_end>" .
+        Put numerical value for x and y. categorical value in hue.
 
         Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>"
         
@@ -316,7 +318,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         Recommend the x and y variables for the plot.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
         y in the tag "<y_var_start>" and "<y_var_end>" .
-        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>".
+        Put numerical value for x and y. categorical value in hue.
 
         Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>".
         
@@ -343,7 +346,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         Recommend the x and y variables for the plot.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
         y in the tag "<y_var_start>" and "<y_var_end>" .
-        hue/class in "<hue_var_start>" and "<hue_var_end>" .
+        hue/class in "<hue_var_start>" and "<hue_var_end>".
+        Put numerical value for x and y. categorical value in hue.
 
         Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>"
 
@@ -372,11 +376,10 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
 def query_no_result(_sample_data_overview, new_question, sql_query):
 
     prompt = f"You are an actuary, " \
-             f"Given the csv file sample data with headers: {_sample_data_overview}, " \
+             f"Given the data with schema: {_sample_data_overview}, " \
              f"you have generated no result for the question '{new_question}'. " \
              f"using the sql query '{sql_query}'. " \
-             f"explain why no result is given? is it missing column?" \
-             f"If column is missing, ask user to rename the column in csv" \
+             f"explain why no result was returned." \
              f"Do not show the query in the answer."
     response = gpt3.gpt_promt_davinci(prompt)
     return response
@@ -699,6 +702,31 @@ def ask_new_question(sample_question, schema_data):
                         ]
                     counter_recommendation += 1
 
+                if 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+
+                    # First, build a default layout for every element you want to include in your dashboard
+                    item_key = "item_" + str(question)
+
+                    if len(layout) > 0:
+                        for layer in layout:
+                            # print("layer number", layer)
+                            if layer['i'] == item_key:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
+                                ]
+                            else:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                                ]
+                    else:
+                        layout = layout + [
+                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                            dashboard.Item(item_key, 0, counter_recommendation, 4, 3, isResizable=True, isDraggable=True)
+                        ]
+                    counter_recommendation += 1
+
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
             # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
@@ -708,6 +736,7 @@ def ask_new_question(sample_question, schema_data):
             #     outfile.write(json.dumps(data, indent=4))
 
         with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+            index_question_counter = 0
             for recommendation in st.session_state["all_result"]:
                 query_recommendation = recommendation['query_recommendation']
                 question = recommendation['question']
@@ -723,16 +752,39 @@ def ask_new_question(sample_question, schema_data):
                 mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
 
                 if "bar" in chart_recommendation.lower():
-                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
+                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                            plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
 
                 elif "metric" in chart_recommendation.lower():
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
+                        # mui.IconButton(mui.icon.Close,
+                        #                sx={
+                        #                    "position": 'absolute',
+                        #                    "zIndex": "tooltip",
+                        #                    "top": -7,
+                        #                    "left": '95%',
+                        #                    "maxWidth": '15px',
+                        #                    "maxHeight": '15px',
+                        #                    "minWidth": '15px',
+                        #                    "minHeight": '15px'
+                        #                }, fontSize="inherit",
+                        #                   disableElevation=True,
+                        #                   variant="text",
+                        #                onClick=delete_session_from_cache)
 
-                if "scatter" in chart_recommendation.lower():
-                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+                elif "scatter" in chart_recommendation.lower():
+                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                            plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+
+                elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                            plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+
+                index_question_counter+=1
 
     counter_non_result = 0
     counter_message_limit = 0
@@ -765,7 +817,7 @@ if UPLOADED_FILE is not None:
     # Create a text element and let the reader know the data is loading.
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
-    ####################################################
+    ##################################################
     with st.expander("See data explaination"):
         get_data_overview(sample_data_overview)
 
