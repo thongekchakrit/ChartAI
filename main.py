@@ -395,7 +395,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     print("Recursive batch: ", list_of_df[0])
     print("Length: ", len(list_of_result))
     print("Content: ", list_of_result)
-    if len(list_of_df) <= 3:
+    if len(list_of_df) <= 10:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
             prompt = f"You are an actuary, " \
@@ -420,35 +420,18 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
         return "Sorry, we've disabled huge processing of large file insights for now..."
 
 @st.cache_data
-def recursive_summarizer_sub(list_of_response, new_question):
+def recursive_summarizer_sub(list_of_response, list_of_result_response, new_question):
 
     if len(list_of_response) < 2:
-        data = '\n'.join(list_of_response)
-        return data
+        list_of_result_response = list_of_result_response + list_of_response
+        return list_of_result_response
     else:
-        # if len('\n'.join(list_of_response)) < 4000:
-        #     data = '\n'.join(list_of_response)
-        # else:
-        pass
-
-        # data = '\n'.join(list_of_response)
-        # print("Question in recursive_summarizer_sub: ", new_question)
-        # print("Answer in data: ", data)
-        # prompt = f"Give a report on the passage to answer the question: {new_question}." \
-        #          f"The passage: {data}"
-        # print(f"Prompt being asked: {prompt}")
-        # list_of_result = [gpt3.gpt_promt_davinci(prompt)]
-        # print(f"Answer: {list_of_result}")
-        # return '\n'.join(list_of_result)
-        #     raise
-    #     response_extract = list_of_response[0]
-    #     prompt = f"You are an actuary" \
-    #              f"The main goal is to answer {new_question}" \
-    #              f"Please summarize the passage:" \
-    #              f"{response_extract}"
-    #     list_of_result = list_of_summarize_text + [gpt3.gpt_promt_davinci(prompt)]
-    #     new_list = list_of_response[1:]
-    #     return recursion_batch(new_list, list_of_result)
+        data = '\n'.join(list_of_response[0])
+        prompt = f"Given the question is {new_question}." \
+                 f"Summarize the following text after: {data}"
+        list_of_result_response = list_of_result_response + [gpt3.gpt_promt_davinci(prompt)]
+        new_list = list_of_response[1:]
+        return recursive_summarizer_sub(new_list, list_of_result_response, new_question)
 
 # def recursive_summarizer_main(response, list_of_response, new_question):
 #     if len(response) < 2:
@@ -459,21 +442,51 @@ def recursive_summarizer_sub(list_of_response, new_question):
 #         return recursive_summarizer_main(response, list_of_response, new_question)
 
 @st.cache_data
+def split_words_into_sublists(word_list, max_words_per_list):
+    """
+    Joins words in a list together and splits them into sublists with a maximum word count
+    of `max_words_per_list`.
+
+    Args:
+        word_list (list): List of words.
+        max_words_per_list (int): Maximum word count per sublist.
+
+    Returns:
+        list: List of sublists containing words.
+    """
+    # Join words into a single string
+    joined_words = ' '.join(word_list)
+
+    # Split words into sublists of max_words_per_list each
+    sublists = [joined_words[i:i + max_words_per_list] for i in range(0, len(joined_words), max_words_per_list)]
+
+    return sublists
+
+@st.cache_data
 def explain_result(query_recommendation, new_question, dataframe_new):
 
     batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
     print(f"Batch size: {batch_size}")
     list_of_df = np.array_split(dataframe_new, batch_size)
     # sample data to first 10 dataframe to get result, to remove in prod
-    list_of_df = list_of_df[:2]
+    list_of_df = list_of_df[:3]
     list_of_result = []
 
     with st.spinner("Working on the analysis, please wait..."):
         response = recursion_batch(list_of_df, list_of_result, new_question, query_recommendation)
 
     if response:
+        list_of_result_response = []
         st.success('Done!')
-        response = recursive_summarizer_sub(response, new_question)
+        if len(response) >= 2:
+            print("Processing sub explaination")
+            max_words_per_list = 3500
+            sublists = split_words_into_sublists(response, max_words_per_list)
+            response = recursive_summarizer_sub(sublists, list_of_result_response, new_question)
+            response = '\n'.join(response)
+        else:
+            print("Combining the response")
+            response = '\n'.join(response)
 
     return response
 
@@ -752,17 +765,17 @@ if UPLOADED_FILE is not None:
     # Create a text element and let the reader know the data is loading.
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
-    #####################################################
-    # with st.expander("See data explaination"):
-    #     get_data_overview(sample_data_overview)
-    #
-    # # Inspecting raw data
-    # with st.expander("See raw data"):
-    #     get_raw_table(DATA)
-    #
-    # # Inspecting summary statistics
-    # with st.expander("See summary statistics"):
-    #     get_summary_statistics(DATA)
+    ####################################################
+    with st.expander("See data explaination"):
+        get_data_overview(sample_data_overview)
+
+    # Inspecting raw data
+    with st.expander("See raw data"):
+        get_raw_table(DATA)
+
+    # Inspecting summary statistics
+    with st.expander("See summary statistics"):
+        get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())

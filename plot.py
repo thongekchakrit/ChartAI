@@ -32,6 +32,10 @@ def plot_metrics(dataframe, label, x_var):
 
 def create_bar_chart(data, x_var, y_var, hue_var, label):
 
+    hue_var = hue_var.split(",")[0]
+    x_var = x_var.split(",")[0]
+    y_var = y_var.split(",")[0]
+
     with mui.Typography:
         html.div(
             label,
@@ -172,106 +176,119 @@ def create_metric_chart(data, x_var, y_var, label):
 
 
 def create_scatter_plot(data, x_var, y_var, hue_var, label):
-    with st.spinner("Cooking the scatter plot now..."):
-        print("Scatterplot: Starting data transformation")
-        data_chart = data.to_dict('records')
-        number_of_list = []
-        for x in data_chart:
-            number_of_list = number_of_list + [x[hue_var]]
-        number_of_list = len(list(set(number_of_list)))
-        list_of_dict = []
-        counter = 0
 
-        for x in data_chart:
-            if list_of_dict:
-                for y in list_of_dict:
-                    if y['id'] == x[hue_var]:
-                        y['data'].append({"x": x[x_var], "y": x[y_var]})
-                    elif len(list(set([x for x in [k['id'] for k in list_of_dict]]))) < number_of_list:
-                        list_of_dict = list_of_dict + [{'id': x[hue_var], 'data' : [{"x": x[x_var], "y": x[y_var]}]}]
-            else:
-                list_of_dict = list_of_dict + [{'id': x[hue_var], 'data' : [{"x": x[x_var], "y": x[y_var]}]}]
-            print(counter)
-            counter+=1
+    if hue_var:
+        hue_var = hue_var.split(",")[0]
+    if x_var:
+        x_var = x_var.split(",")[0]
+    if y_var:
+        y_var = y_var.split(",")[0]
 
-        with mui.Typography:
-            html.div(
-                label,
-                css={
-                    "display": "block",
-                    "margin-top": "1em",
-                    "margin-bottom": "1em",
-                    "margin-left": "2em",
-                    "margin-right": "0em"
-                }
-            )
-        print("Scatterplot: Completed data transformation")
+    if hue_var:
+        with st.spinner("Cooking the scatter plot now..."):
+            print("Scatterplot: Starting data transformation")
+            data_chart = data.to_dict('records')
+            number_of_list = []
+            for x in data_chart:
+                number_of_list = number_of_list + [x[hue_var]]
+            number_of_list = len(list(set(number_of_list)))
+            list_of_dict = []
+            counter = 0
 
-        nivo.ScatterPlot(
-            data=list_of_dict,
-            layout="vertical",
-            xFormat=">-.2f",
-            margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
-            padding={0.4},
-            xScale={"type": 'linear', "min": 0, "max": 'auto'},
-            yScale={"type": 'linear', "min": 0, "max": 'auto'},
-            blendMode="multiply",
-            indexScale={"type": 'band', "round": "true"},
-            colors={"scheme": 'pastel1'},
-            borderColor={
-                "from": 'color',
-                "modifiers": [
-                    [
-                        'darker',
-                        1.6
+            for x in data_chart:
+                if list_of_dict:
+                    for y in list_of_dict:
+                        if y['id'] == x[hue_var]:
+                            y['data'].append({"x": x[x_var], "y": x[y_var]})
+                        elif len(list(set([x for x in [k['id'] for k in list_of_dict]]))) < number_of_list:
+                            list_of_dict = list_of_dict + [{'id': x[hue_var], 'data' : [{"x": x[x_var], "y": x[y_var]}]}]
+                else:
+                    list_of_dict = list_of_dict + [{'id': x[hue_var], 'data' : [{"x": x[x_var], "y": x[y_var]}]}]
+                print(counter)
+                counter+=1
+
+            with mui.Typography:
+                html.div(
+                    label,
+                    css={
+                        "display": "block",
+                        "margin-top": "1em",
+                        "margin-bottom": "1em",
+                        "margin-left": "2em",
+                        "margin-right": "0em"
+                    }
+                )
+            print("Scatterplot: Completed data transformation")
+
+            nivo.ScatterPlot(
+                data=list_of_dict,
+                layout="vertical",
+                xFormat=">-.2f",
+                margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
+                padding={0.4},
+                xScale={"type": 'linear', "min": 0, "max": 'auto'},
+                yScale={"type": 'linear', "min": 0, "max": 'auto'},
+                blendMode="multiply",
+                indexScale={"type": 'band', "round": "true"},
+                colors={"scheme": 'pastel1'},
+                borderColor={
+                    "from": 'color',
+                    "modifiers": [
+                        [
+                            'darker',
+                            1.6
+                        ]
                     ]
-                ]
-            },
-            axisBottom={
-                'orient': 'bottom',
-                "tickSize": 5,
-                "tickPadding": 5,
-                "tickRotation": 0,
-                "legend": str(x_var),
-                "legendPosition": 'middle',
-                "legendOffset": 32
-            },
-            axisLeft={
-                'orient': 'left',
-                "tickSize": 5,
-                "tickPadding": 5,
-                "tickRotation": 0,
-                "legend": str(y_var),
-                "legendPosition": 'middle',
-                "legendOffset": -40
-            },
-            legends=[
-                {
-                    "dataFrom": 'keys',
-                    "anchor": 'top-right',
-                    "direction": 'column',
-                    "margin": { "left": 10 },
-                    "justify": "false",
-                    "translateX": 120,
-                    "translateY": 0,
-                    "itemsSpacing": 2,
-                    "itemWidth": 100,
-                    "itemHeight": 20,
-                    "itemDirection": 'left-to-right',
-                    "itemOpacity": 0.85,
-                    "symbolSize": 20,
-                    "effects": [
-                        {
-                            "on": 'hover',
-                            "style": {
-                                "itemOpacity": 1
+                },
+                axisBottom={
+                    'orient': 'bottom',
+                    "tickSize": 5,
+                    "tickPadding": 5,
+                    "tickRotation": 0,
+                    "legend": str(x_var),
+                    "legendPosition": 'middle',
+                    "legendOffset": 32
+                },
+                axisLeft={
+                    'orient': 'left',
+                    "tickSize": 5,
+                    "tickPadding": 5,
+                    "tickRotation": 0,
+                    "legend": str(y_var),
+                    "legendPosition": 'middle',
+                    "legendOffset": -40
+                },
+                legends=[
+                    {
+                        "dataFrom": 'keys',
+                        "anchor": 'top-right',
+                        "direction": 'column',
+                        "margin": { "left": 10 },
+                        "justify": "false",
+                        "legend": str(hue_var),
+                        "translateX": 120,
+                        "translateY": 0,
+                        "itemsSpacing": 2,
+                        "itemWidth": 100,
+                        "itemHeight": 20,
+                        "itemDirection": 'left-to-right',
+                        "itemOpacity": 0.85,
+                        "symbolSize": 20,
+                        "effects": [
+                            {
+                                "on": 'hover',
+                                "style": {
+                                    "itemOpacity": 1
+                                }
                             }
-                        }
-                    ]
-                }
-            ],
-            role="application",
-            ariaLabel=label
-        )
-        print("Scatterplot: Plotted")
+                        ]
+                    }
+                ],
+                role="application",
+                ariaLabel=label
+            )
+    else:
+        with st.spinner("Cooking the scatter plot now..."):
+            st.error("Missing hue for scatter plot")
+            print("Scatterplot: Plotted")
 
