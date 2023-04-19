@@ -5,6 +5,7 @@ import streamlit as st
 from streamlit_elements import elements, mui, html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
+from streamlit_chat import message
 import altair as alt
 import pandas as pd
 import numpy as np
@@ -33,10 +34,19 @@ import random
 # name, authentication_status, username = authenticator.login('Login', 'main')
 #
 # if authentication_status:
-st.markdown("# **Data Analytics AI**")
+st.set_page_config(layout="wide")
+st.markdown("# **AutoVizAI - Text to Graphs**")
 st.markdown(
     "Upload a csv, ask a question and gain insights from your data."
 )
+
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 UPLOADED_FILE = st.file_uploader("Choose a file")
 GPT_SECRETS = st.secrets["gpt_secret"]
@@ -353,7 +363,7 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
 
         """
 
-    print(prompt)
+    # print(prompt)
 
     response = gpt3.gpt_promt_davinci(prompt)
 
@@ -394,10 +404,10 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     :return: Recursive response from chat GPT
     '''
 
-    print("Recursive batch length: ", len(list_of_df[0].to_json()))
-    print("Recursive batch: ", list_of_df[0])
-    print("Length: ", len(list_of_result))
-    print("Content: ", list_of_result)
+    # print("Recursive batch length: ", len(list_of_df[0].to_json()))
+    # print("Recursive batch: ", list_of_df[0])
+    # print("Length: ", len(list_of_result))
+    # print("Content: ", list_of_result)
     if len(list_of_df) <= 10:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
@@ -469,7 +479,7 @@ def split_words_into_sublists(word_list, max_words_per_list):
 def explain_result(query_recommendation, new_question, dataframe_new):
 
     batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
-    print(f"Batch size: {batch_size}")
+    # print(f"Batch size: {batch_size}")
     list_of_df = np.array_split(dataframe_new, batch_size)
     # sample data to first 10 dataframe to get result, to remove in prod
     list_of_df = list_of_df[:3]
@@ -482,13 +492,13 @@ def explain_result(query_recommendation, new_question, dataframe_new):
         list_of_result_response = []
         st.success('Done!')
         if len(response) >= 2:
-            print("Processing sub explaination")
+            # print("Processing sub explaination")
             max_words_per_list = 3500
             sublists = split_words_into_sublists(response, max_words_per_list)
             response = recursive_summarizer_sub(sublists, list_of_result_response, new_question)
             response = '\n'.join(response)
         else:
-            print("Combining the response")
+            # print("Combining the response")
             response = '\n'.join(response)
 
     return response
@@ -499,12 +509,12 @@ def get_dataframe_from_duckdb_query(query):
         dataframe_new = duckdb.query(query).df()
     except:
         dataframe_new = pd.DataFrame()
-    print(dataframe_new)
+    # print(dataframe_new)
     return dataframe_new
 
 @st.cache_data
 def query_text(_schema_data, new_question):
-    print("Querying the GPT...")
+    # print("Querying the GPT...")
     # Get the query
     query_recommendation = re.sub(" +", " ", generate_sql_gpt(schema_data, new_question))
     dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
@@ -512,7 +522,7 @@ def query_text(_schema_data, new_question):
 
     if len(dataframe_new) > 0:
         response = explain_result(query_recommendation, new_question, dataframe_new)
-        print("Response", response)
+        # print("Response", response)
     else:
         response = query_no_result(_schema_data, new_question, query_recommendation)
         chart_recommendation = None
@@ -573,7 +583,7 @@ def check_layout_user_exists(username, path="session_layout/layout.json"):
             layout_file = json.loads(str(lines))
     else:
         data = {username: []}
-        with open("session_layout/layout.json", "w") as outfile:
+        with open("../session_layout/layout.json", "w") as outfile:
             outfile.write(json.dumps(data, indent=4))
 
     # print("check", layout_file)
@@ -584,6 +594,10 @@ def check_layout_user_exists(username, path="session_layout/layout.json"):
 
     return user_layout
 
+def get_text():
+    input_text = st.text_input("You: ","Hello, how are you?", key="input")
+    return input_text
+
 
 def ask_new_question(sample_question, schema_data):
     text = st.empty()
@@ -593,9 +607,10 @@ def ask_new_question(sample_question, schema_data):
     index_past = 'past_' + key_type
 
     if sample_question:
-        new_question = text.text_input("Try typing in your own question below...", value= sample_question, key = key_type).strip()
+        new_question = text.text_input("Typing in your own question below...👇", value= sample_question, key = key_type).strip()
     else:
-        new_question = text.text_input("Ask questions below and talk to our ai...", key = key_type).strip()
+
+        new_question = text.text_input("Typing in your own question below...👇", key = key_type).strip()
 
     if new_question:
         if new_question not in st.session_state[index_questions]:
@@ -617,7 +632,7 @@ def ask_new_question(sample_question, schema_data):
                         }
                         st.session_state["all_result"].append(resp)
 
-                        print("Summary results: \n", resp)
+                        # print("Summary results: \n", resp)
 
                     st.session_state[index_past].append(new_question)
                     output_template = f"""
@@ -639,101 +654,118 @@ def ask_new_question(sample_question, schema_data):
             st.session_state[index_past].append(exist_question)
             st.session_state[index_generated].append(exist_output)
 
+    #########################################################################################################################
+    ## Handling the Dashboard Layouts For Created Charts
+    #########################################################################################################################
+    # Create a list to keep the layout
+    layout = []
     # Plot element dashboard
     with elements("dashboard"):
 
         # initialize layout
         # check_layout_user_exists(username)
         counter_recommendation = 0
-        layout = []
+
+        # Check if session state have a chart
+        if 'streamlit_elements.core.frame.elements_frame.dashboard' in st.session_state:
+            if st.session_state['streamlit_elements.core.frame.elements_frame.dashboard']:
+                session_state_layout = json.loads(st.session_state['streamlit_elements.core.frame.elements_frame.dashboard'])
+                if 'streamlit_elements.core.frame.elements_frame.dashboard00000000' in session_state_layout:
+                    layout = session_state_layout['streamlit_elements.core.frame.elements_frame.dashboard00000000']['updated_layout']
+            # print("============================================================================")
 
         # You can create a draggable and resizable dashboard using
         for recommendation in st.session_state["all_result"]:
             question = recommendation['question']
             chart_recommendation = recommendation['chart_recommendation']
             if chart_recommendation != None:
-                if "bar" in chart_recommendation.lower():
+                if ("bar" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) \
+                        or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
 
                     # First, build a default layout for every element you want to include in your dashboard
                     item_key = "item_" + str(question)
 
                     if len(layout) > 0:
+                        # print("counter: ", counter_recommendation)
+                        # print("Chart Recommendation: ", chart_recommendation)
+                        # print("(Line 673) Layer: ", layout)
+                        # print("\n")
                         for layer in layout:
-                            # print("layer number", layer)
+                            # print("(Line 678) Layer: ", layout)
+                            # print("(Line 679) Checking layer to item key: ", layer['i'], item_key)
+                            # print("(Line 680) Layer: ", layer)
+                            # print("\n")
                             if layer['i'] == item_key:
+                                pass
+                            elif item_key not in str(layout):
+                                # print(f"(Line 684) {layer['i']} !does not match! {item_key}")
+                                # print(f"(Line 685) Adding {item_key}")
+                                # print("\n")
                                 layout = layout + [
                                     # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
+                                    dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
                                 ]
                             else:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
-                                ]
+                                pass
                     else:
                         layout = layout + [
                             # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                            dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
+                            dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
                         ]
                     counter_recommendation += 1
 
-                if "scatter" in chart_recommendation.lower():
-
+                else:
                     # First, build a default layout for every element you want to include in your dashboard
                     item_key = "item_" + str(question)
 
                     if len(layout) > 0:
+                        # print("(Line 711) counter: ", counter_recommendation)
+                        # print("Chart Recommendation: ", chart_recommendation)
+                        # print("Layer: ", layout)
+                        # print("\n")
                         for layer in layout:
-                            # print("layer number", layer)
+                            # print("counter: ", counter_recommendation)
+                            # print("(Line 715) Layer: ", layout)
+                            # print("Checking layer to item key: ", layer['i'], item_key)
+                            # print("Layer: ", layer)
+                            # print("\n")
                             if layer['i'] == item_key:
+                                # print(f"(Line 720) {layer['i']} !match! {item_key}")
+                                # print(f"Adding {item_key}")
+                                # print("\n")
+                                pass
+                            elif item_key not in str(layout):
+                                # print(f"(Line 728) {layer['i']} !does not match! {item_key}")
+                                # print(f"Adding {item_key}")
+                                print("\n")
                                 layout = layout + [
                                     # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
+                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
                                 ]
                             else:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
-                                ]
+                                pass
                     else:
                         layout = layout + [
                             # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                            dashboard.Item(item_key, 0, counter_recommendation, 4, 3, isResizable=True, isDraggable=True)
+                            dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
                         ]
                     counter_recommendation += 1
 
-                if 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
-
-                    # First, build a default layout for every element you want to include in your dashboard
-                    item_key = "item_" + str(question)
-
-                    if len(layout) > 0:
-                        for layer in layout:
-                            # print("layer number", layer)
-                            if layer['i'] == item_key:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, layer['x'], layer['y'], layer['w'], layer['h'], isResizable=True, isDraggable=True)
-                                ]
-                            else:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 2, isResizable=True, isDraggable=True)
-                                ]
-                    else:
-                        layout = layout + [
-                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                            dashboard.Item(item_key, 0, counter_recommendation, 4, 3, isResizable=True, isDraggable=True)
-                        ]
-                    counter_recommendation += 1
+            # print("(Line 734) Layout: ", layout)
 
         def handle_layout_change(updated_layout):
             # You can save the layout in a file, or do anything you want with it.
             # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-            print("Updated Layout", updated_layout)
+            # print("(Line 739) Updated Layout", updated_layout)
             # data = {username: updated_layout}
             # with open("session_layout/sample.json", "w") as outfile:
             #     outfile.write(json.dumps(data, indent=4))
+            # print("(line 723) Updated Layout: ", updated_layout)
+            print("\n")
+
+        #########################################################################################################################
+        ## Handling the Dashboard
+        #########################################################################################################################
 
         with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
             index_question_counter = 0
@@ -759,20 +791,6 @@ def ask_new_question(sample_question, schema_data):
                 elif "metric" in chart_recommendation.lower():
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
-                        # mui.IconButton(mui.icon.Close,
-                        #                sx={
-                        #                    "position": 'absolute',
-                        #                    "zIndex": "tooltip",
-                        #                    "top": -7,
-                        #                    "left": '95%',
-                        #                    "maxWidth": '15px',
-                        #                    "maxHeight": '15px',
-                        #                    "minWidth": '15px',
-                        #                    "minHeight": '15px'
-                        #                }, fontSize="inherit",
-                        #                   disableElevation=True,
-                        #                   variant="text",
-                        #                onClick=delete_session_from_cache)
 
                 elif "scatter" in chart_recommendation.lower():
                     if (x_recommendation != 'None') & (y_recommendation != 'None'):
@@ -785,6 +803,12 @@ def ask_new_question(sample_question, schema_data):
                             plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
 
                 index_question_counter+=1
+
+
+    #########################################################################################################################
+    ## Populating the question and answers
+    #########################################################################################################################
+    col1, col2, col3 = st.columns([0.25, 3, 0.25],gap="small")
 
     counter_non_result = 0
     counter_message_limit = 0
@@ -799,25 +823,51 @@ def ask_new_question(sample_question, schema_data):
 
                             # if questions does not produce result,
                             # only show the first question and hide the rest
-                            st.markdown("**Question: " + st.session_state[index_past][i] + "**")
-                            st.text_area(label = "Answer🤖", value = ("The query produce no result, please rephrase the question.").strip(), disabled=True)
+                            with col2:
+                                message("The query produce no result, please rephrase the question.", key=str(i), avatar_style="thumbs", seed="Mimi")
+                                message(st.session_state[index_past][i], is_user=True, key=str(i) + '_user', avatar_style="thumbs", seed="Mia")
+
                     else:
                         # Show the lastest 5 message
                         # if questions have result print them out
-                        st.markdown("**Question: " + st.session_state[index_past][i] + "**")
-                        height_adjustor = len((st.session_state[index_generated][i]).strip())*0.5
-                        st.text_area(label = "Answer🤖", value = (st.session_state[index_generated][i]).strip(), disabled=True,
-                                     height=int(height_adjustor))
-                        counter_message_limit += 1
+                        with col2:
+                            message((st.session_state[index_generated][i]).strip(), key=str(i), avatar_style="thumbs", seed="Mimi")
+                            message(st.session_state[index_past][i], is_user=True, key=str(i) + '_user', avatar_style="thumbs", seed="Mia")
+                            counter_message_limit += 1
                 except:
                     pass
 
+
+
+#########################################################################################################################
+## Main Application
+#########################################################################################################################
 
 if UPLOADED_FILE is not None:
     # Create a text element and let the reader know the data is loading.
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
-    ##################################################
+    st.sidebar.title("About")
+    st.sidebar.info(
+        """
+        Simply upload your csv file and explore your data using natural language. 
+        
+        We'll generate the insights and graphs for you.
+           
+        """
+    )
+
+    st.sidebar.title("Contact")
+    st.sidebar.info(
+        """
+        Author: Chakrit Thong Ek
+        
+        [LinkedIn](https://www.linkedin.com/in/thongekchakrit/) | [GitHub](https://github.com/thongekchakrit) 
+        """
+    )
+
+    #################################################
+    st.markdown("### Data Explaination")
     with st.expander("See data explaination"):
         get_data_overview(sample_data_overview)
 
@@ -832,17 +882,17 @@ if UPLOADED_FILE is not None:
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())
 
-    st.markdown("### AIViz💬")
-    st.write("List of sample questions")
+    st.markdown("### Exploration Chat💬")
+    st.write("Pick one of the questions from the list of sample questions below.")
     col1, col2, col3, col4, col5 = st.columns(5)
 
     # Generate 5 sample questions
-    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-    # sample_question_1 = "What us the average age of the people in the dataset?"
-    # sample_question_2 = "What is the most common sex in the dataset?"
-    # sample_question_3 = "What is the average BMI of the people in the dataset?"
-    # sample_question_4 = "What is the average number of children in the dataset?"
-    # sample_question_5 = "What is the most common region in the dataset?"
+    # sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+    sample_question_1 = "What us the average age of the people in the dataset?"
+    sample_question_2 = "What is the most common sex in the dataset?"
+    sample_question_3 = "What is the average BMI of the people in the dataset?"
+    sample_question_4 = "What is the average number of children in the dataset?"
+    sample_question_5 = "What is the most common region in the dataset?"
     question = None
 
     # Create the sample questions columns
@@ -872,10 +922,3 @@ if UPLOADED_FILE is not None:
     #     st.error('Username/password is incorrect')
     # elif authentication_status is None:
     #     st.warning('Please enter your username and password')
-
-
-
-
-
-
-

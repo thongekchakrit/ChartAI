@@ -19,8 +19,6 @@ def plot_metrics(dataframe, label, x_var):
     else:
         value = dataframe[x_var].round(2)
 
-    print(value)
-
     return st.metric(label=label, value=value)
 
 def create_bar_chart(data, x_var, y_var, hue_var, title):
@@ -47,16 +45,17 @@ def create_bar_chart(data, x_var, y_var, hue_var, title):
                     "display": "block",
                     "margin-top": "1em",
                     "margin-bottom": "1em",
-                    "margin-left": "2em",
-                    "margin-right": "0em"
+                    "margin-left": "1em",
+                    "margin-right": "0em",
+                    "font-weight": "bold"
                 }
             )
 
         data_chart = data.to_dict('records')
-        print("data chart", data_chart)
-        print("x_var", x_var)
-        print("y_var", y_var)
-        print("hue_var", hue_var)
+        # print("data chart", data_chart)
+        # print("x_var", x_var)
+        # print("y_var", y_var)
+        # print("hue_var", hue_var)
 
         nivo.Bar(
             data=data_chart,
@@ -155,15 +154,15 @@ def create_metric_chart(data, x_var, y_var, title):
         with mui.Typography:
             html.div(
                 html.p(title),
-                html.p(data_value),
                 css={
                     "display": "block",
                     "margin-top": "1em",
                     "margin-bottom": "1em",
                     "margin-left": "2em",
-                    "margin-right": "0em"
+                    "margin-right": "0em",
+                    "font-weight": "bold"
                 }
-            )
+                )
     else:
 
         if 'float' in str(type(data_chart[0][x_var])):
@@ -174,7 +173,6 @@ def create_metric_chart(data, x_var, y_var, title):
         with mui.Typography:
             html.div(
                 html.p(title),
-                html.p(data_value),
                 css={
                     "display": "block",
                     "margin-top": "1em",
@@ -182,7 +180,22 @@ def create_metric_chart(data, x_var, y_var, title):
                     "margin-left": "1em",
                     "margin-right": "0em",
                     "flex": 1,
-                    "minHeight": 0
+                    "minHeight": 0,
+                    "font-weight": "bold"
+                }
+            )
+            html.div(
+                html.p(data_value),
+                css={
+                    "display": "block",
+                    "margin-top": "1em",
+                    "margin-bottom": "1em",
+                    "margin-right": "0em",
+                    "flex": 1,
+                    "minHeight": 0,
+                    "font-weight": "900",
+                    "font-size": "x-large",
+                    "text-align": "center"
                 }
             )
 
@@ -206,7 +219,7 @@ def create_scatter_plot(data, x_var, y_var, hue_var, title):
 
     if hue_var:
         with st.spinner("Cooking the scatter plot now..."):
-            print("Scatterplot: Starting data transformation")
+            # print("Scatterplot: Starting data transformation")
             data_chart = data.to_dict('records')
             number_of_list = []
             for x in data_chart:
@@ -234,11 +247,12 @@ def create_scatter_plot(data, x_var, y_var, hue_var, title):
                         "display": "block",
                         "margin-top": "1em",
                         "margin-bottom": "1em",
-                        "margin-left": "2em",
-                        "margin-right": "0em"
+                        "margin-left": "1em",
+                        "margin-right": "0em",
+                        "font-weight": "bold"
                     }
                 )
-            print("Scatterplot: Completed data transformation")
+            # print("Scatterplot: Completed data transformation")
 
             nivo.ScatterPlot(
                 data=list_of_dict,
@@ -310,7 +324,7 @@ def create_scatter_plot(data, x_var, y_var, hue_var, title):
     else:
         with st.spinner("Cooking the scatter plot now..."):
             st.error("Missing hue for scatter plot")
-            print("Scatterplot: Plotted")
+            # print("Scatterplot: Plotted")
 
 
 def create_swarm_plot(data, x_var, y_var, hue_var, title):
@@ -412,6 +426,7 @@ def create_swarm_plot(data, x_var, y_var, hue_var, title):
                     "margin-left": "1em",
                     "margin-right": "0em",
                     "flex": 1,
-                    "minHeight": 0
+                    "minHeight": 0,
+                    "font-weight": "bold"
                 }
             )
