@@ -887,12 +887,12 @@ if UPLOADED_FILE is not None:
     col1, col2, col3, col4, col5 = st.columns(5)
 
     # Generate 5 sample questions
-    # sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-    sample_question_1 = "What us the average age of the people in the dataset?"
-    sample_question_2 = "What is the most common sex in the dataset?"
-    sample_question_3 = "What is the average BMI of the people in the dataset?"
-    sample_question_4 = "What is the average number of children in the dataset?"
-    sample_question_5 = "What is the most common region in the dataset?"
+    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+#     sample_question_1 = "What us the average age of the people in the dataset?"
+#     sample_question_2 = "What is the most common sex in the dataset?"
+#     sample_question_3 = "What is the average BMI of the people in the dataset?"
+#     sample_question_4 = "What is the average number of children in the dataset?"
+#     sample_question_5 = "What is the most common region in the dataset?"
     question = None
 
     # Create the sample questions columns
