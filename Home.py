@@ -124,7 +124,7 @@ def convert_datatype(df):
         try:
             df[c]=pd.to_datetime(df[c])
         except (ParserError,ValueError): #Can't cnvrt some
-            pass # ...so leave whole column as-is unconverted
+            df[c] = df[c].apply(str.lower)
 
     df = df.convert_dtypes()
     return df
