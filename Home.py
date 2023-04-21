@@ -58,7 +58,7 @@ SIDE_BAR_PAST_DATASET_INPUT_1 = 'past_normal'
 gpt3.openai.api_key = GPT_SECRETS
 
 if not UPLOADED_FILE:
-    UPLOADED_FILE = "archive/views/sample_data.csv"
+    UPLOADED_FILE = "archive/views/sample_data_2.csv"
     st.warning("Using default dataset, upload a csv file to gain insights to your data...")
 
 # Store the initial value of widgets in session state
