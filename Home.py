@@ -3,9 +3,11 @@ import streamlit as st
 # import yaml
 # from yaml.loader import SafeLoader
 from streamlit_elements import elements, mui, html
+from streamlit.components.v1 import html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
 from streamlit_chat import message
+import streamlit_toggle as tog
 import altair as alt
 import pandas as pd
 import numpy as np
@@ -34,7 +36,7 @@ import random
 # name, authentication_status, username = authenticator.login('Login', 'main')
 #
 # if authentication_status:
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="AutoVizAI Automated Data Analysis AI", page_icon="assets/images/favicon.png", layout="wide", initial_sidebar_state='collapsed')
 st.markdown("# **AutoVizAI - Text to Graphs**")
 st.markdown(
     "Upload a csv, ask a question and gain insights from your data."
@@ -78,6 +80,9 @@ if "disabled_input" not in st.session_state:
 
 if "all_result" not in st.session_state:
     st.session_state["all_result"] = []
+
+if "all_result_hidden" not in st.session_state:
+    st.session_state["all_result_hidden"] = []
 
 if 'question_dict' not in st.session_state:
     st.session_state['question_dict'] = {}
@@ -598,6 +603,68 @@ def get_text():
     input_text = st.text_input("You: ","Hello, how are you?", key="input")
     return input_text
 
+def show_dashboard(session_all_result, index_question_counter):
+    for recommendation in session_all_result:
+        if recommendation['hide_graph'] == False:
+            # print("LINE 782 DIFF CHECK: ", Diff(st.session_state["all_result"], st.session_state["all_result_hidden"]))
+            # print("\n")
+            # print("LINE 784 all recom: ", st.session_state["all_result"])
+            # print("\n")
+            # print("LINE 786 all hidden: ", st.session_state["all_result_hidden"])
+            # print(st.session_state["all_result"])
+            query_recommendation = recommendation['query_recommendation']
+            question = recommendation['question']
+            x_recommendation = recommendation['x_recommendation']
+            y_recommendation = recommendation['y_recommendation']
+            hue_recommendation = recommendation['hue_recommendation']
+            chart_recommendation = recommendation['chart_recommendation']
+            title_recommendation = recommendation['title_recommendation']
+            item_key = "item_" + str(question)
+
+            # Get new dataframe
+            dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+            mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
+
+            if "bar" in chart_recommendation.lower():
+                if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
+
+            elif "metric" in chart_recommendation.lower():
+                with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                    plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
+
+            elif "scatter" in chart_recommendation.lower():
+                if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+
+            elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+                if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+
+            index_question_counter+=1
+
+def show_messages(_index_generated, _index_past, _i, is_result):
+    with st.expander(f"{str(_i+1)}.{st.session_state[_index_past][_i]}"):
+        if is_result:
+            message((st.session_state[_index_generated][_i]).strip(), key=str(_i), avatar_style="thumbs", seed="Mimi")
+        else:
+            message("The query produce no result, please rephrase the question.", key=str(_i), avatar_style="thumbs", seed="Mimi")
+        message(st.session_state[_index_past][_i], is_user=True, key=str(_i) + '_user', avatar_style="thumbs", seed="Mia")
+        key_build = str(st.session_state[_index_past][_i] + '_toggle_graph')
+        index_q = next((index for (index, d) in enumerate(st.session_state["all_result"]) if d["question"] == st.session_state[_index_past][_i]), None)
+
+        if tog.st_toggle_switch(label=f"Hide Graph", key=key_build, default_value=st.session_state["all_result"][index_q]['hide_graph'],
+                                label_after = False, inactive_color = '#D3D3D3', active_color="#11567f",
+                                track_color="#29B5E8"):
+            # Move the question from key into hidden list if toggle is on
+            st.session_state["all_result"][index_q]['hide_graph'] = True
+        else:
+            st.session_state["all_result"][index_q]['hide_graph'] = False
+
+
 
 def ask_new_question(sample_question, schema_data):
     text = st.empty()
@@ -605,6 +672,7 @@ def ask_new_question(sample_question, schema_data):
     index_questions = 'question_dict_' + key_type
     index_generated = 'generated_' + key_type
     index_past = 'past_' + key_type
+    chat_col, dashboard_col = st.columns([1, 3])
 
     if sample_question:
         new_question = text.text_input("Typing in your own question below...👇", value= sample_question, key = key_type).strip()
@@ -628,7 +696,8 @@ def ask_new_question(sample_question, schema_data):
                             "x_recommendation": x_recommendation,
                             "y_recommendation": y_recommendation,
                             "hue_recommendation": hue_recommendation,
-                            "title_recommendation": title_recommendation
+                            "title_recommendation": title_recommendation,
+                            "hide_graph": False
                         }
                         st.session_state["all_result"].append(resp)
 
@@ -655,189 +724,152 @@ def ask_new_question(sample_question, schema_data):
             st.session_state[index_generated].append(exist_output)
 
     #########################################################################################################################
+    ## Populating the question and answers
+    #########################################################################################################################
+    with chat_col:
+        if st.session_state["all_result"]:
+            st.markdown("### Text Answers")
+            counter_non_result = 0
+            counter_message_limit = 0
+            if st.session_state[index_generated]:
+                placeholder = st.empty()
+                with placeholder.container():
+                    for i in range(len(st.session_state[index_generated])-1, -1, -1):
+                        try:
+                            if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
+                                counter_non_result += 1
+                                if counter_non_result <= 1:
+                                    # if questions does not produce result,
+                                    # only show the first question and hide the rest
+                                    show_messages(index_generated, index_past, i, False)
+
+                            else:
+                                # Show the lastest 5 message
+                                # if questions have result print them out
+                                show_messages(index_generated, index_past, i, True)
+                                counter_message_limit += 1
+                        except:
+                            pass
+
+    #########################################################################################################################
     ## Handling the Dashboard Layouts For Created Charts
     #########################################################################################################################
     # Create a list to keep the layout
     layout = []
     # Plot element dashboard
-    with elements("dashboard"):
+    with dashboard_col:
+        with elements("dashboard"):
 
-        # initialize layout
-        # check_layout_user_exists(username)
-        counter_recommendation = 0
+            # initialize layout
+            # check_layout_user_exists(username)
+            counter_recommendation = 0
 
-        # Check if session state have a chart
-        if 'streamlit_elements.core.frame.elements_frame.dashboard' in st.session_state:
-            if st.session_state['streamlit_elements.core.frame.elements_frame.dashboard']:
-                session_state_layout = json.loads(st.session_state['streamlit_elements.core.frame.elements_frame.dashboard'])
-                if 'streamlit_elements.core.frame.elements_frame.dashboard00000000' in session_state_layout:
-                    layout = session_state_layout['streamlit_elements.core.frame.elements_frame.dashboard00000000']['updated_layout']
-            # print("============================================================================")
+            # Check if session state have a chart
+            if 'streamlit_elements.core.frame.elements_frame.dashboard' in st.session_state:
+                if st.session_state['streamlit_elements.core.frame.elements_frame.dashboard']:
+                    session_state_layout = json.loads(st.session_state['streamlit_elements.core.frame.elements_frame.dashboard'])
+                    if 'streamlit_elements.core.frame.elements_frame.dashboard00000000' in session_state_layout:
+                        layout = session_state_layout['streamlit_elements.core.frame.elements_frame.dashboard00000000']['updated_layout']
+                # print("============================================================================")
 
-        # You can create a draggable and resizable dashboard using
-        for recommendation in st.session_state["all_result"]:
-            question = recommendation['question']
-            chart_recommendation = recommendation['chart_recommendation']
-            if chart_recommendation != None:
-                if ("bar" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) \
-                        or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+            # You can create a draggable and resizable dashboard using
+            for recommendation in st.session_state["all_result"]:
+                if recommendation['hide_graph'] == False:
+                    question = recommendation['question']
+                    chart_recommendation = recommendation['chart_recommendation']
+                    if chart_recommendation != None:
+                        if ("bar" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) \
+                                or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
 
-                    # First, build a default layout for every element you want to include in your dashboard
-                    item_key = "item_" + str(question)
+                            # First, build a default layout for every element you want to include in your dashboard
+                            item_key = "item_" + str(question)
 
-                    if len(layout) > 0:
-                        # print("counter: ", counter_recommendation)
-                        # print("Chart Recommendation: ", chart_recommendation)
-                        # print("(Line 673) Layer: ", layout)
-                        # print("\n")
-                        for layer in layout:
-                            # print("(Line 678) Layer: ", layout)
-                            # print("(Line 679) Checking layer to item key: ", layer['i'], item_key)
-                            # print("(Line 680) Layer: ", layer)
-                            # print("\n")
-                            if layer['i'] == item_key:
-                                pass
-                            elif item_key not in str(layout):
-                                # print(f"(Line 684) {layer['i']} !does not match! {item_key}")
-                                # print(f"(Line 685) Adding {item_key}")
+                            if len(layout) > 0:
+                                # print("counter: ", counter_recommendation)
+                                # print("Chart Recommendation: ", chart_recommendation)
+                                # print("(Line 673) Layer: ", layout)
                                 # print("\n")
+                                for layer in layout:
+                                    # print("(Line 678) Layer: ", layout)
+                                    # print("(Line 679) Checking layer to item key: ", layer['i'], item_key)
+                                    # print("(Line 680) Layer: ", layer)
+                                    # print("\n")
+                                    if layer['i'] == item_key:
+                                        pass
+                                    elif item_key not in str(layout):
+                                        # print(f"(Line 684) {layer['i']} !does not match! {item_key}")
+                                        # print(f"(Line 685) Adding {item_key}")
+                                        # print("\n")
+                                        layout = layout + [
+                                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                            dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
+                                        ]
+                                    else:
+                                        pass
+                            else:
                                 layout = layout + [
                                     # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
                                     dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
                                 ]
-                            else:
-                                pass
-                    else:
-                        layout = layout + [
-                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                            dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
-                        ]
-                    counter_recommendation += 1
+                            counter_recommendation += 1
 
-                else:
-                    # First, build a default layout for every element you want to include in your dashboard
-                    item_key = "item_" + str(question)
+                        else:
+                            # First, build a default layout for every element you want to include in your dashboard
+                            item_key = "item_" + str(question)
 
-                    if len(layout) > 0:
-                        # print("(Line 711) counter: ", counter_recommendation)
-                        # print("Chart Recommendation: ", chart_recommendation)
-                        # print("Layer: ", layout)
-                        # print("\n")
-                        for layer in layout:
-                            # print("counter: ", counter_recommendation)
-                            # print("(Line 715) Layer: ", layout)
-                            # print("Checking layer to item key: ", layer['i'], item_key)
-                            # print("Layer: ", layer)
-                            # print("\n")
-                            if layer['i'] == item_key:
-                                # print(f"(Line 720) {layer['i']} !match! {item_key}")
-                                # print(f"Adding {item_key}")
+                            if len(layout) > 0:
+                                # print("(Line 711) counter: ", counter_recommendation)
+                                # print("Chart Recommendation: ", chart_recommendation)
+                                # print("Layer: ", layout)
                                 # print("\n")
-                                pass
-                            elif item_key not in str(layout):
-                                # print(f"(Line 728) {layer['i']} !does not match! {item_key}")
-                                # print(f"Adding {item_key}")
-                                print("\n")
+                                for layer in layout:
+                                    # print("counter: ", counter_recommendation)
+                                    # print("(Line 715) Layer: ", layout)
+                                    # print("Checking layer to item key: ", layer['i'], item_key)
+                                    # print("Layer: ", layer)
+                                    # print("\n")
+                                    if layer['i'] == item_key:
+                                        # print(f"(Line 720) {layer['i']} !match! {item_key}")
+                                        # print(f"Adding {item_key}")
+                                        # print("\n")
+                                        pass
+                                    elif item_key not in str(layout):
+                                        # print(f"(Line 728) {layer['i']} !does not match! {item_key}")
+                                        # print(f"Adding {item_key}")
+                                        # print("\n")
+                                        layout = layout + [
+                                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                            dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
+                                        ]
+                                    else:
+                                        pass
+                            else:
                                 layout = layout + [
                                     # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
                                     dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
                                 ]
-                            else:
-                                pass
-                    else:
-                        layout = layout + [
-                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                            dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
-                        ]
-                    counter_recommendation += 1
+                            counter_recommendation += 1
 
-            # print("(Line 734) Layout: ", layout)
+                # print("(Line 734) Layout: ", layout)
 
-        def handle_layout_change(updated_layout):
-            # You can save the layout in a file, or do anything you want with it.
-            # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-            # print("(Line 739) Updated Layout", updated_layout)
-            # data = {username: updated_layout}
-            # with open("session_layout/sample.json", "w") as outfile:
-            #     outfile.write(json.dumps(data, indent=4))
-            # print("(line 723) Updated Layout: ", updated_layout)
-            print("\n")
+            def handle_layout_change(updated_layout):
+                # You can save the layout in a file, or do anything you want with it.
+                # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
+                # print("(Line 739) Updated Layout", updated_layout)
+                # data = {username: updated_layout}
+                # with open("session_layout/sample.json", "w") as outfile:
+                #     outfile.write(json.dumps(data, indent=4))
+                print("(line 723) Updated Layout: ", updated_layout)
+                # print("\n")
 
-        #########################################################################################################################
-        ## Handling the Dashboard
-        #########################################################################################################################
-
-        with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
-            index_question_counter = 0
-            for recommendation in st.session_state["all_result"]:
-                query_recommendation = recommendation['query_recommendation']
-                question = recommendation['question']
-                x_recommendation = recommendation['x_recommendation']
-                y_recommendation = recommendation['y_recommendation']
-                hue_recommendation = recommendation['hue_recommendation']
-                chart_recommendation = recommendation['chart_recommendation']
-                title_recommendation = recommendation['title_recommendation']
-                item_key = "item_" + str(question)
-
-                # Get new dataframe
-                dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
-                mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
-
-                if "bar" in chart_recommendation.lower():
-                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
-                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                            plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
-
-                elif "metric" in chart_recommendation.lower():
-                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
-
-                elif "scatter" in chart_recommendation.lower():
-                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
-                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                            plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
-
-                elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
-                    if (x_recommendation != 'None') & (y_recommendation != 'None'):
-                        with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                            plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
-
-                index_question_counter+=1
-
-
-    #########################################################################################################################
-    ## Populating the question and answers
-    #########################################################################################################################
-    col1, col2, col3 = st.columns([0.25, 3, 0.25],gap="small")
-
-    counter_non_result = 0
-    counter_message_limit = 0
-    if st.session_state[index_generated]:
-        placeholder = st.empty()
-        with placeholder.container():
-            for i in range(len(st.session_state[index_generated])-1, -1, -1):
-                try:
-                    if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
-                        counter_non_result += 1
-                        if counter_non_result <= 1:
-
-                            # if questions does not produce result,
-                            # only show the first question and hide the rest
-                            with col2:
-                                message("The query produce no result, please rephrase the question.", key=str(i), avatar_style="thumbs", seed="Mimi")
-                                message(st.session_state[index_past][i], is_user=True, key=str(i) + '_user', avatar_style="thumbs", seed="Mia")
-
-                    else:
-                        # Show the lastest 5 message
-                        # if questions have result print them out
-                        with col2:
-                            message((st.session_state[index_generated][i]).strip(), key=str(i), avatar_style="thumbs", seed="Mimi")
-                            message(st.session_state[index_past][i], is_user=True, key=str(i) + '_user', avatar_style="thumbs", seed="Mia")
-                            counter_message_limit += 1
-                except:
-                    pass
-
-
+            #########################################################################################################################
+            ## Handling the Dashboard
+            #########################################################################################################################
+            if st.session_state["all_result"]:
+                st.markdown("### Dashboard")
+            with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+                index_question_counter = 0
+                show_dashboard(st.session_state["all_result"], index_question_counter)
 
 #########################################################################################################################
 ## Main Application
@@ -868,31 +900,31 @@ if UPLOADED_FILE is not None:
 
     #################################################
     st.markdown("### Data Explaination")
-    with st.expander("See data explaination"):
-        get_data_overview(sample_data_overview)
-
-    # Inspecting raw data
-    with st.expander("See raw data"):
-        get_raw_table(DATA)
-
-    # Inspecting summary statistics
-    with st.expander("See summary statistics"):
-        get_summary_statistics(DATA)
+    # with st.expander("See data explaination"):
+    #     get_data_overview(sample_data_overview)
+    #
+    # # Inspecting raw data
+    # with st.expander("See raw data"):
+    #     get_raw_table(DATA)
+    #
+    # # Inspecting summary statistics
+    # with st.expander("See summary statistics"):
+    #     get_summary_statistics(DATA)
 
     data_schema = convert_datatype(DATA)
     schema_data = str(data_schema.dtypes.to_dict().items())
 
-    st.markdown("### Exploration Chat💬")
+    st.markdown("### Exploration 💬")
     st.write("Pick one of the questions from the list of sample questions below.")
     col1, col2, col3, col4, col5 = st.columns(5)
 
     # Generate 5 sample questions
-    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-#     sample_question_1 = "What us the average age of the people in the dataset?"
-#     sample_question_2 = "What is the most common sex in the dataset?"
-#     sample_question_3 = "What is the average BMI of the people in the dataset?"
-#     sample_question_4 = "What is the average number of children in the dataset?"
-#     sample_question_5 = "What is the most common region in the dataset?"
+    # sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+    sample_question_1 = "What us the average age of the people in the dataset?"
+    sample_question_2 = "What is the most common sex in the dataset?"
+    sample_question_3 = "What is the average BMI of the people in the dataset?"
+    sample_question_4 = "What is the average number of children in the dataset?"
+    sample_question_5 = "What is the most common region in the dataset?"
     question = None
 
     # Create the sample questions columns
@@ -922,3 +954,23 @@ if UPLOADED_FILE is not None:
     #     st.error('Username/password is incorrect')
     # elif authentication_status is None:
     #     st.warning('Please enter your username and password')
+
+
+    # button = """
+    # <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="blackarysf" data-color="#FFDD00" data-emoji=""  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
+    # """
+    #
+    # html(button, height=70, width=220)
+    #
+    # st.markdown(
+    #     """
+    #     <style>
+    #         iframe[width="220"] {
+    #             position: fixed;
+    #             bottom: 60px;
+    #             right: 40px;
+    #         }
+    #     </style>
+    #     """,
+    #     unsafe_allow_html=True,
+    # )

@@ -24,8 +24,7 @@ Thank you for using our website. We understand the importance of your privacy an
 We do not collect any personal information about our users unless they voluntarily provide it to us. The only information we collect is the CSV file that the user uploads to our website. This file is used in the session only and will not be saved once the user exits the site. We do not collect or store any other information about our users.
 
 ## Use of Information
-The CSV file uploaded by the user is used solely for the purpose of generating a report. We do not use this information for any other purpose or share it with any third-party organizations.
-
+The CSV file uploaded by the user is used solely for the purpose of generating a report. We do not use this information for any other purpose or share it with any third-party organizations. Please note that we also use the GPT-3 API for data analysis, GPT-3 API does not, and we do not store any information received from the GPT-3 API.
 ## Disclosure of Information
 We do not disclose any personal information about our users to third-party organizations. We only use the CSV file uploaded by the user for generating a report, and this file is not shared with anyone else.
 
