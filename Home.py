@@ -115,6 +115,7 @@ def load_data(UPLOADED_FILE):
 @st.cache_data
 def rename_dataset_columns(dataframe):
     dataframe.columns = dataframe.columns.str.replace('[#,@,&,$,(,)]', '')
+    dataframe.columns = [re.sub(r'%|_%', '_percentage', x) for x in dataframe.columns]
     dataframe.columns = dataframe.columns.str.replace(' ', '_')
     dataframe.columns = [x.lstrip('_') for x in dataframe.columns]
     dataframe.columns = [x.strip() for x in dataframe.columns]
@@ -216,6 +217,7 @@ def generate_sql_gpt(_data_schema, new_question):
     Write me an  SQL script in duckDB language that can answer the following question: "How many authors are there in the year 2022?". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
     
     Answer: 
     <sql_start>
@@ -233,6 +235,7 @@ def generate_sql_gpt(_data_schema, new_question):
     Write me an  SQL script in duckDB language that can answer the following question: " What is the correlation between BMI and charges??". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
     
     Answer: 
     <sql_start>
@@ -249,8 +252,13 @@ def generate_sql_gpt(_data_schema, new_question):
     Write me an SQL script in duckDB language that can answer the following question:  {new_question}
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
     
     """
+
+    print(prompt)
+    print("\n")
+
     response = gpt3.gpt_promt_davinci(prompt)
     try:
         query_recommendation = re.search(r"<sql_start>(.*)<sql_end>", response.replace("\n", ' ')).group(1).strip()
@@ -607,10 +615,6 @@ def check_layout_user_exists(username, path="session_layout/layout.json"):
 
     return user_layout
 
-def get_text():
-    input_text = st.text_input("You: ","Hello, how are you?", key="input")
-    return input_text
-
 def show_dashboard(session_all_result, index_question_counter):
     for recommendation in session_all_result:
         if recommendation['hide_graph'] == False:
@@ -636,22 +640,30 @@ def show_dashboard(session_all_result, index_question_counter):
             if "bar" in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
-
+                        try:
+                            plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
+                        except:
+                            pass
             elif "metric" in chart_recommendation.lower():
                 with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                    plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
-
+                    try:
+                        plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
+                    except:
+                        pass
             elif "scatter" in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
-
+                        try:
+                            plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+                        except:
+                            pass
             elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
-                        plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
-
+                        try:
+                            plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+                        except:
+                            pass
             index_question_counter+=1
 
 def show_messages(_index_generated, _index_past, _i, is_result):
@@ -943,7 +955,7 @@ if UPLOADED_FILE is not None:
                 question = sample_question_5
 
         # Generate the ask question bar
-        st.markdown("Type in your question below (Press Ctrl+Enter):")
+        st.markdown("Type in your question below (Press Ctrl+Enter to key in question):")
         ask_new_question(question, schema_data)
         # elif authentication_status is False:
         #     st.error('Username/password is incorrect')
