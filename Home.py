@@ -909,7 +909,7 @@ if UPLOADED_FILE is not None:
         schema_data = str(data_schema.dtypes.to_dict().items())
 
         st.markdown("### Exploration 💬")
-        st.write("Below are some sample question, pick one of the questions below to see how our AI can analyse your question.")
+        st.write("Below are some sample questions, pick one of the questions below to see how our AI can analyse your question.")
         col1, col2, col3, col4, col5 = st.columns(5)
 
         # Generate 5 sample questions
