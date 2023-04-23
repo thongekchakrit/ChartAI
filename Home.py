@@ -2,7 +2,7 @@
 import streamlit as st
 # import yaml
 # from yaml.loader import SafeLoader
-from streamlit_elements import elements, mui, html
+from streamlit_elements import elements, mui
 from streamlit.components.v1 import html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
@@ -37,10 +37,18 @@ import random
 #
 # if authentication_status:
 st.set_page_config(page_title="AutoVizAI Automated Data Analysis AI", page_icon="assets/images/favicon.png", layout="wide", initial_sidebar_state='collapsed')
-st.markdown("# **AutoVizAI - Text to Graphs**")
-st.markdown(
-    "Upload a csv, ask a question and gain insights from your data."
-)
+col_main_1, col_main_2, col_main_3 = st.columns([1,4,1])
+
+with col_main_2:
+    st.markdown("# **AutoVizAI - Text to Graphs**")
+    st.markdown(
+        """
+        Generate insights and graphs from raw data in this web application.  
+        Try out our application’s functions with our sample dataset below,  
+        or simply upload your csv file and explore your data using natural language.  
+        """
+    )
+    UPLOADED_FILE = st.file_uploader("Upload your data")
 
 hide_streamlit_style = """
             <style>
@@ -49,16 +57,17 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-UPLOADED_FILE = st.file_uploader("Choose a file")
+
 GPT_SECRETS = st.secrets["gpt_secret"]
 SIDE_BAR_QUESTION_TAB_1 = 'question_dict_normal'
 SIDE_BAR_GENERATED_DATASET_INPUT_1 = 'generated_normal'
 SIDE_BAR_PAST_DATASET_INPUT_1 = 'past_normal'
 gpt3.openai.api_key = GPT_SECRETS
 
-if not UPLOADED_FILE:
-    UPLOADED_FILE = "archive/views/sample_data_2.csv"
-    st.warning("Using default dataset, upload a csv file to gain insights to your data...")
+with col_main_2:
+    if not UPLOADED_FILE:
+        UPLOADED_FILE = "archive/views/sample_data_2.csv"
+        st.markdown("*Application is currently running the sample dataset. To get insights from your own data, please upload your csv file.*")
 
 # Store the initial value of widgets in session state
 if "visibility" not in st.session_state:
@@ -646,6 +655,7 @@ def show_dashboard(session_all_result, index_question_counter):
             index_question_counter+=1
 
 def show_messages(_index_generated, _index_past, _i, is_result):
+    
     with st.expander(f"{str(_i+1)}.{st.session_state[_index_past][_i]}"):
         if is_result:
             message((st.session_state[_index_generated][_i]).strip(), key=str(_i), avatar_style="thumbs", seed="Mimi")
@@ -671,13 +681,13 @@ def ask_new_question(sample_question, schema_data):
     index_questions = 'question_dict_' + key_type
     index_generated = 'generated_' + key_type
     index_past = 'past_' + key_type
-    chat_col, dashboard_col = st.columns([1, 3])
+    chat_col, dashboard_col = st.tabs(["Textual View", "Graphical View"])
+
 
     if sample_question:
-        new_question = text.text_input("Typing in your own question below...👇", value= sample_question, key = key_type).strip()
+        new_question = text.text_area("Typing in your own question below...👇", value= sample_question, key = key_type, label_visibility="collapsed").strip()
     else:
-
-        new_question = text.text_input("Typing in your own question below...👇", key = key_type).strip()
+        new_question = text.text_area("Typing in your own question below...👇", key = key_type, label_visibility="collapsed").strip()
 
     if new_question:
         if new_question not in st.session_state[index_questions]:
@@ -711,7 +721,7 @@ def ask_new_question(sample_question, schema_data):
 
 
         else:
-            st.info('Question exists...', icon="⚠️")
+            st.info('Question exists, bringing question to recent view...', icon="⚠️")
             exist_question_index = st.session_state[index_past].index(new_question)
             exist_question = st.session_state[index_past].pop(exist_question_index)
             # print(f"This question exists: {exist_question}")
@@ -727,13 +737,14 @@ def ask_new_question(sample_question, schema_data):
     #########################################################################################################################
     with chat_col:
         if st.session_state["all_result"]:
-            st.markdown("### Text Answers")
+            st.markdown("### Answers")
             counter_non_result = 0
             counter_message_limit = 0
             if st.session_state[index_generated]:
                 placeholder = st.empty()
                 with placeholder.container():
-                    for i in range(len(st.session_state[index_generated])-1, -1, -1):
+                    total_length_reverse =  reversed(range(len(st.session_state[index_generated])-1, -1, -1))
+                    for i in total_length_reverse:
                         try:
                             if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
                                 counter_non_result += 1
@@ -878,98 +889,124 @@ if UPLOADED_FILE is not None:
     # Create a text element and let the reader know the data is loading.
     DATA, sample_data_overview = load_data(UPLOADED_FILE)
 
-    st.sidebar.title("About")
-    st.sidebar.info(
-        """
-        Simply upload your csv file and explore your data using natural language. 
-        
-        We'll generate the insights and graphs for you.
-           
-        """
-    )
-
-    st.sidebar.title("Contact")
-    st.sidebar.info(
-        """
-        Author: Chakrit Thong Ek
-        
-        [LinkedIn](https://www.linkedin.com/in/thongekchakrit/) | [GitHub](https://github.com/thongekchakrit) 
-        """
-    )
 
     #################################################
-    st.markdown("### Data Explaination")
-    with st.expander("See data explaination"):
-        get_data_overview(sample_data_overview)
+    with col_main_2:
+        st.markdown("### Data Explaination")
+        st.markdown("The topic below gives you a general feel of the dataset, click on the expander to see more.")
+        with st.expander("See data explaination"):
+            get_data_overview(sample_data_overview)
 
-    # Inspecting raw data
-    with st.expander("See raw data"):
-        get_raw_table(DATA)
+        # Inspecting raw data
+        with st.expander("See raw data"):
+            get_raw_table(DATA)
 
-    # Inspecting summary statistics
-    with st.expander("See summary statistics"):
-        get_summary_statistics(DATA)
+        # Inspecting summary statistics
+        with st.expander("See summary statistics"):
+            get_summary_statistics(DATA)
 
-    data_schema = convert_datatype(DATA)
-    schema_data = str(data_schema.dtypes.to_dict().items())
+        data_schema = convert_datatype(DATA)
+        schema_data = str(data_schema.dtypes.to_dict().items())
 
-    st.markdown("### Exploration 💬")
-    st.write("Pick one of the questions from the list of sample questions below.")
-    col1, col2, col3, col4, col5 = st.columns(5)
+        st.markdown("### Exploration 💬")
+        st.write("Below are some sample question, pick one of the questions below to see how our AI can analyse your question.")
+        col1, col2, col3, col4, col5 = st.columns(5)
 
-    # Generate 5 sample questions
-    sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-    # sample_question_1 = "What us the average age of the people in the dataset?"
-    # sample_question_2 = "What is the most common sex in the dataset?"
-    # sample_question_3 = "What is the average BMI of the people in the dataset?"
-    # sample_question_4 = "What is the average number of children in the dataset?"
-    # sample_question_5 = "What is the most common region in the dataset?"
-    question = None
+        # Generate 5 sample questions
+        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+        # sample_question_1 = "What us the average age of the people in the dataset?"
+        # sample_question_2 = "What is the most common sex in the dataset?"
+        # sample_question_3 = "What is the average BMI of the people in the dataset?"
+        # sample_question_4 = "What is the average number of children in the dataset?"
+        # sample_question_5 = "What is the most common region in the dataset?"
+        question = None
 
-    # Create the sample questions columns
-    with col1:
-        if st.button(sample_question_1):
-            question = sample_question_1
+        # Create the sample questions columns
+        with col1:
+            if st.button(sample_question_1):
+                question = sample_question_1
 
-    with col2:
-        if st.button(sample_question_2):
-            question = sample_question_2
+        with col2:
+            if st.button(sample_question_2):
+                question = sample_question_2
 
-    with col3:
-        if st.button(sample_question_3):
-            question = sample_question_3
+        with col3:
+            if st.button(sample_question_3):
+                question = sample_question_3
 
-    with col4:
-        if st.button(sample_question_4):
-            question = sample_question_4
+        with col4:
+            if st.button(sample_question_4):
+                question = sample_question_4
 
-    with col5:
-        if st.button(sample_question_5):
-            question = sample_question_5
+        with col5:
+            if st.button(sample_question_5):
+                question = sample_question_5
 
-    # Generate the ask question bar
-    ask_new_question(question, schema_data)
-    # elif authentication_status is False:
-    #     st.error('Username/password is incorrect')
-    # elif authentication_status is None:
-    #     st.warning('Please enter your username and password')
+        # Generate the ask question bar
+        st.markdown("Type in your question below (Press Ctrl+Enter):")
+        ask_new_question(question, schema_data)
+        # elif authentication_status is False:
+        #     st.error('Username/password is incorrect')
+        # elif authentication_status is None:
+        #     st.warning('Please enter your username and password')
 
 
-    # button = """
-    # <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="blackarysf" data-color="#FFDD00" data-emoji=""  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
-    # """
-    #
-    # html(button, height=70, width=220)
-    #
-    # st.markdown(
-    #     """
-    #     <style>
-    #         iframe[width="220"] {
-    #             position: fixed;
-    #             bottom: 60px;
-    #             right: 40px;
-    #         }
-    #     </style>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
+        # button = """
+        # <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="blackarysf" data-color="#FFDD00" data-emoji=""  data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#ffffff" ></script>
+        # """
+        #
+        # html(button, height=70, width=220)
+        #
+        # st.markdown(
+        #     """
+        #     <style>
+        #         iframe[width="220"] {
+        #             position: fixed;
+        #             bottom: 60px;
+        #             right: 40px;
+        #         }
+        #     </style>
+        #     """,
+        #     unsafe_allow_html=True,
+        # )
+
+    st.markdown(
+        """
+        <style>
+            
+            .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f8f8;
+            color: #999999;
+            text-align: center;
+            padding: 10px;
+            }
+            
+            .footer a {
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            margin: 0 10px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease-in-out;
+            font-co
+            }
+            
+            .footer a:hover  {
+                opacity: 0.5;
+            }
+        </style>
+        
+        <div class="footer">
+        Made By Chakrit Thong EK: &nbsp;
+            <a href="https://github.com/thongekchakrit">GitHub</a>
+            <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
+            <a href="./Privacy_Policy">Privacy Policy</a>
+            
+        </div>""",
+        unsafe_allow_html=True,
+    )
+
