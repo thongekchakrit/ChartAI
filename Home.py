@@ -655,7 +655,7 @@ def show_dashboard(session_all_result, index_question_counter):
             index_question_counter+=1
 
 def show_messages(_index_generated, _index_past, _i, is_result):
-    
+
     with st.expander(f"{str(_i+1)}.{st.session_state[_index_past][_i]}"):
         if is_result:
             message((st.session_state[_index_generated][_i]).strip(), key=str(_i), avatar_style="thumbs", seed="Mimi")
@@ -892,9 +892,9 @@ if UPLOADED_FILE is not None:
 
     #################################################
     with col_main_2:
-        st.markdown("### Data Explaination")
+        st.markdown("### Data Explanation 🔎")
         st.markdown("The topic below gives you a general feel of the dataset, click on the expander to see more.")
-        with st.expander("See data explaination"):
+        with st.expander("See data explanation"):
             get_data_overview(sample_data_overview)
 
         # Inspecting raw data
