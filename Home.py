@@ -999,7 +999,7 @@ if UPLOADED_FILE is not None:
         # sample_question_3 = "What is the average BMI of the people in the dataset?"
         # sample_question_4 = "What is the average number of children in the dataset?"
         # sample_question_5 = "What is the most common region in the dataset?"
-        # question = None
+        question = None
 
         # Create the sample questions columns
         with col1:
