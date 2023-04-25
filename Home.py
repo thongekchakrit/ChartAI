@@ -975,15 +975,15 @@ if UPLOADED_FILE is not None:
         st.markdown("### Data Explanation 🔎")
         st.markdown("The topic below gives you a general feel of the dataset, click on the expander to see more.")
         # with st.expander("See data explanation"):
-        #     get_data_overview(sample_data_overview)
+        get_data_overview(sample_data_overview)
 
         # Inspecting raw data
         with st.expander("See raw data"):
             get_raw_table(DATA)
 
         # Inspecting summary statistics
-        # with st.expander("See summary statistics"):
-        #     get_summary_statistics(DATA)
+        with st.expander("See summary statistics"):
+            get_summary_statistics(DATA)
 
         data_schema = convert_datatype(DATA)
         schema_data = str(data_schema.dtypes.to_dict().items())
@@ -993,13 +993,13 @@ if UPLOADED_FILE is not None:
         col1, col2, col3, col4, col5 = st.columns(5)
 
         # Generate 5 sample questions
-        # sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-        sample_question_1 = "What us the average age of the people in the dataset?"
-        sample_question_2 = "What is the most common sex in the dataset?"
-        sample_question_3 = "What is the average BMI of the people in the dataset?"
-        sample_question_4 = "What is the average number of children in the dataset?"
-        sample_question_5 = "What is the most common region in the dataset?"
-        question = None
+        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+        # sample_question_1 = "What us the average age of the people in the dataset?"
+        # sample_question_2 = "What is the most common sex in the dataset?"
+        # sample_question_3 = "What is the average BMI of the people in the dataset?"
+        # sample_question_4 = "What is the average number of children in the dataset?"
+        # sample_question_5 = "What is the most common region in the dataset?"
+        # question = None
 
         # Create the sample questions columns
         with col1:
@@ -1087,6 +1087,4 @@ if UPLOADED_FILE is not None:
             <a href="./Privacy_Policy">Privacy Policy</a>
             
         </div>""",
-        unsafe_allow_html=True,
-    )
-
+        unsafe_allow_html=True)
