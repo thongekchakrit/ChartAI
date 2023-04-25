@@ -256,8 +256,8 @@ def generate_sql_gpt(_data_schema, new_question):
     
     """
 
-    print(prompt)
-    print("\n")
+    # print(prompt)
+    # print("\n")
 
     response = gpt3.gpt_promt_davinci(prompt)
     try:
@@ -400,6 +400,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         y_recommendation = None
         hue_recommendation = None
         title_recommendation = None
+
+    print(chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
 
     return chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation
 
@@ -643,27 +645,110 @@ def show_dashboard(session_all_result, index_question_counter):
                         try:
                             plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
                         except:
-                            pass
+                            with mui.Typography:
+                                html.div(
+                                    html.p(title_recommendation),
+                                    css={
+                                        "display": "block",
+                                        "margin-top": "1em",
+                                        "margin-bottom": "1em",
+                                        "margin-left": "1em",
+                                        "margin-right": "0em",
+                                        "flex": 1,
+                                        "minHeight": 0,
+                                        "font-weight": "bold"
+                                    }
+                                )
+                                html.p("Error")
+
             elif "metric" in chart_recommendation.lower():
                 with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                     try:
                         plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
                     except:
-                        pass
+                        with mui.Typography:
+                            html.div(
+                                html.p(title_recommendation),
+                                css={
+                                    "display": "block",
+                                    "margin-top": "1em",
+                                    "margin-bottom": "1em",
+                                    "margin-left": "1em",
+                                    "margin-right": "0em",
+                                    "flex": 1,
+                                    "minHeight": 0,
+                                    "font-weight": "bold"
+                                }
+                            )
+                            html.p("Error")
+
             elif "scatter" in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
                             plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            pass
+                            with mui.Typography:
+                                html.div(
+                                    html.p(title_recommendation),
+                                    css={
+                                        "display": "block",
+                                        "margin-top": "1em",
+                                        "margin-bottom": "1em",
+                                        "margin-left": "1em",
+                                        "margin-right": "0em",
+                                        "flex": 1,
+                                        "minHeight": 0,
+                                        "font-weight": "bold"
+                                    }
+                                )
+                                html.p("Error")
+
             elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
                             plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            pass
+                            with mui.Typography:
+                                html.div(
+                                    html.p(title_recommendation),
+                                    css={
+                                        "display": "block",
+                                        "margin-top": "1em",
+                                        "margin-bottom": "1em",
+                                        "margin-left": "1em",
+                                        "margin-right": "0em",
+                                        "flex": 1,
+                                        "minHeight": 0,
+                                        "font-weight": "bold"
+                                    }
+                                )
+                                html.p("Error")
+
+            elif 'pie' in chart_recommendation.lower():
+                print("Pie plot")
+                if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        try:
+                            plot.create_pie_chart(dataframe_new,  x_recommendation, y_recommendation, title_recommendation)
+                        except:
+                            with mui.Typography:
+                                html.div(
+                                    html.p(title_recommendation),
+                                    css={
+                                        "display": "block",
+                                        "margin-top": "1em",
+                                        "margin-bottom": "1em",
+                                        "margin-left": "1em",
+                                        "margin-right": "0em",
+                                        "flex": 1,
+                                        "minHeight": 0,
+                                        "font-weight": "bold"
+                                    }
+                                )
+                                html.p("Error")
+
             index_question_counter+=1
 
 def show_messages(_index_generated, _index_past, _i, is_result):
@@ -801,37 +886,32 @@ def ask_new_question(sample_question, schema_data):
                     chart_recommendation = recommendation['chart_recommendation']
                     if chart_recommendation != None:
                         if ("bar" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) \
-                                or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+                                or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower() or 'pie' in chart_recommendation.lower():
 
+                            if 'pie' in chart_recommendation.lower():
+                                width = 4
+                                height = 2
+                            else:
+                                width = 3
+                                height = 2
                             # First, build a default layout for every element you want to include in your dashboard
                             item_key = "item_" + str(question)
 
                             if len(layout) > 0:
-                                # print("counter: ", counter_recommendation)
-                                # print("Chart Recommendation: ", chart_recommendation)
-                                # print("(Line 673) Layer: ", layout)
-                                # print("\n")
                                 for layer in layout:
-                                    # print("(Line 678) Layer: ", layout)
-                                    # print("(Line 679) Checking layer to item key: ", layer['i'], item_key)
-                                    # print("(Line 680) Layer: ", layer)
-                                    # print("\n")
                                     if layer['i'] == item_key:
                                         pass
                                     elif item_key not in str(layout):
-                                        # print(f"(Line 684) {layer['i']} !does not match! {item_key}")
-                                        # print(f"(Line 685) Adding {item_key}")
-                                        # print("\n")
                                         layout = layout + [
                                             # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                            dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
+                                            dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
                                         ]
                                     else:
                                         pass
                             else:
                                 layout = layout + [
                                     # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, 3, 2, isResizable=True, isDraggable=True)
+                                    dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
                                 ]
                             counter_recommendation += 1
 
@@ -840,20 +920,8 @@ def ask_new_question(sample_question, schema_data):
                             item_key = "item_" + str(question)
 
                             if len(layout) > 0:
-                                # print("(Line 711) counter: ", counter_recommendation)
-                                # print("Chart Recommendation: ", chart_recommendation)
-                                # print("Layer: ", layout)
-                                # print("\n")
                                 for layer in layout:
-                                    # print("counter: ", counter_recommendation)
-                                    # print("(Line 715) Layer: ", layout)
-                                    # print("Checking layer to item key: ", layer['i'], item_key)
-                                    # print("Layer: ", layer)
-                                    # print("\n")
                                     if layer['i'] == item_key:
-                                        # print(f"(Line 720) {layer['i']} !match! {item_key}")
-                                        # print(f"Adding {item_key}")
-                                        # print("\n")
                                         pass
                                     elif item_key not in str(layout):
                                         # print(f"(Line 728) {layer['i']} !does not match! {item_key}")
@@ -906,16 +974,16 @@ if UPLOADED_FILE is not None:
     with col_main_2:
         st.markdown("### Data Explanation 🔎")
         st.markdown("The topic below gives you a general feel of the dataset, click on the expander to see more.")
-        with st.expander("See data explanation"):
-            get_data_overview(sample_data_overview)
+        # with st.expander("See data explanation"):
+        #     get_data_overview(sample_data_overview)
 
         # Inspecting raw data
         with st.expander("See raw data"):
             get_raw_table(DATA)
 
         # Inspecting summary statistics
-        with st.expander("See summary statistics"):
-            get_summary_statistics(DATA)
+        # with st.expander("See summary statistics"):
+        #     get_summary_statistics(DATA)
 
         data_schema = convert_datatype(DATA)
         schema_data = str(data_schema.dtypes.to_dict().items())
@@ -925,12 +993,12 @@ if UPLOADED_FILE is not None:
         col1, col2, col3, col4, col5 = st.columns(5)
 
         # Generate 5 sample questions
-        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
-        # sample_question_1 = "What us the average age of the people in the dataset?"
-        # sample_question_2 = "What is the most common sex in the dataset?"
-        # sample_question_3 = "What is the average BMI of the people in the dataset?"
-        # sample_question_4 = "What is the average number of children in the dataset?"
-        # sample_question_5 = "What is the most common region in the dataset?"
+        # sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+        sample_question_1 = "What us the average age of the people in the dataset?"
+        sample_question_2 = "What is the most common sex in the dataset?"
+        sample_question_3 = "What is the average BMI of the people in the dataset?"
+        sample_question_4 = "What is the average number of children in the dataset?"
+        sample_question_5 = "What is the most common region in the dataset?"
         question = None
 
         # Create the sample questions columns

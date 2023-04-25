@@ -1,25 +1,7 @@
 import streamlit as st
+import random
 from streamlit_elements import nivo
 from streamlit_elements import mui, html
-
-def plot_metrics(dataframe, label, x_var):
-    """
-
-    :param dataframe: The dataframe that needs to be plotted
-    :param label: The title of the chart
-    :param x_var: The x variable or the metric that we want to be plotted
-    :return: the plotted graph
-    """
-    x_var = x_var.split(",")[0]
-
-    if len(dataframe) > 1:
-        max_value = dataframe[x_var].max().round(2)
-        min_value = dataframe[x_var].min().round(2)
-        value = str(f"Ranges {min_value} to {max_value}")
-    else:
-        value = dataframe[x_var].round(2)
-
-    return st.metric(label=label, value=value)
 
 def create_bar_chart(data, x_var, y_var, hue_var, title):
 
@@ -32,12 +14,99 @@ def create_bar_chart(data, x_var, y_var, hue_var, title):
     :return: bar chart
     """
 
-    if (x_var != 'None') & (y_var != 'None'):
+    try:
 
-        hue_var = hue_var.split(",")[0]
-        x_var = x_var.split(",")[0]
-        y_var = y_var.split(",")[0]
+        if (x_var != 'None') & (y_var != 'None'):
 
+            hue_var = hue_var.split(",")[0]
+            x_var = x_var.split(",")[0]
+            y_var = y_var.split(",")[0]
+
+            with mui.Typography:
+                html.div(
+                    title,
+                    css={
+                        "display": "block",
+                        "margin-top": "1em",
+                        "margin-bottom": "1em",
+                        "margin-left": "1em",
+                        "margin-right": "0em",
+                        "font-weight": "bold"
+                    }
+                )
+
+            data_chart = data.to_dict('records')
+            # print("data chart", data_chart)
+            # print("x_var", x_var)
+            # print("y_var", y_var)
+            # print("hue_var", hue_var)
+
+            nivo.Bar(
+                data=data_chart,
+                layout="vertical",
+                keys=[y_var],
+                indexBy=x_var,
+                margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
+                padding={0.4},
+                valueScale={"type": 'linear'},
+                indexScale={"type": 'band', "round": "true"},
+                colors={"scheme": 'pastel1'},
+                borderColor={
+                    "from": 'color',
+                    "modifiers": [
+                        [
+                            'darker',
+                            1.6
+                        ]
+                    ]
+                },
+                axisBottom={
+                    'orient': 'bottom',
+                    "tickSize": 5,
+                    "tickPadding": 5,
+                    "tickRotation": 0,
+                    "legend": str(x_var),
+                    "legendPosition": 'middle',
+                    "legendOffset": 32
+                },
+                axisLeft={
+                    'orient': 'left',
+                    "tickSize": 5,
+                    "tickPadding": 5,
+                    "tickRotation": 0,
+                    "legend": str(y_var),
+                    "legendPosition": 'middle',
+                    "legendOffset": -40
+                },
+                legends=[
+                    {
+                        "dataFrom": 'keys',
+                        "anchor": 'top-right',
+                        "direction": 'column',
+                        "margin": { "left": 10 },
+                        "justify": "false",
+                        "translateX": 120,
+                        "translateY": 0,
+                        "itemsSpacing": 2,
+                        "itemWidth": 100,
+                        "itemHeight": 20,
+                        "itemDirection": 'left-to-right',
+                        "itemOpacity": 0.85,
+                        "symbolSize": 20,
+                        "effects": [
+                            {
+                                "on": 'hover',
+                                "style": {
+                                    "itemOpacity": 1
+                                }
+                            }
+                        ]
+                    }
+                ],
+                role="application",
+                ariaLabel=title,
+            )
+    except:
         with mui.Typography:
             html.div(
                 title,
@@ -50,78 +119,8 @@ def create_bar_chart(data, x_var, y_var, hue_var, title):
                     "font-weight": "bold"
                 }
             )
+            html.div("Error")
 
-        data_chart = data.to_dict('records')
-        # print("data chart", data_chart)
-        # print("x_var", x_var)
-        # print("y_var", y_var)
-        # print("hue_var", hue_var)
-
-        nivo.Bar(
-            data=data_chart,
-            layout="vertical",
-            keys=[y_var],
-            indexBy=x_var,
-            margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
-            padding={0.4},
-            valueScale={"type": 'linear'},
-            indexScale={"type": 'band', "round": "true"},
-            colors={"scheme": 'pastel1'},
-            borderColor={
-                "from": 'color',
-                "modifiers": [
-                    [
-                        'darker',
-                        1.6
-                    ]
-                ]
-            },
-            axisBottom={
-                'orient': 'bottom',
-                "tickSize": 5,
-                "tickPadding": 5,
-                "tickRotation": 0,
-                "legend": str(x_var),
-                "legendPosition": 'middle',
-                "legendOffset": 32
-            },
-            axisLeft={
-                'orient': 'left',
-                "tickSize": 5,
-                "tickPadding": 5,
-                "tickRotation": 0,
-                "legend": str(y_var),
-                "legendPosition": 'middle',
-                "legendOffset": -40
-            },
-            legends=[
-                {
-                    "dataFrom": 'keys',
-                    "anchor": 'top-right',
-                    "direction": 'column',
-                    "margin": { "left": 10 },
-                    "justify": "false",
-                    "translateX": 120,
-                    "translateY": 0,
-                    "itemsSpacing": 2,
-                    "itemWidth": 100,
-                    "itemHeight": 20,
-                    "itemDirection": 'left-to-right',
-                    "itemOpacity": 0.85,
-                    "symbolSize": 20,
-                    "effects": [
-                        {
-                            "on": 'hover',
-                            "style": {
-                                "itemOpacity": 1
-                            }
-                        }
-                    ]
-                }
-            ],
-            role="application",
-            ariaLabel=title,
-        )
 
 def create_metric_chart(data, x_var, y_var, title):
 
@@ -133,6 +132,7 @@ def create_metric_chart(data, x_var, y_var, title):
     """
 
     data_chart = data.to_dict('records')
+
 
     if x_var:
         x_var = x_var
@@ -161,8 +161,7 @@ def create_metric_chart(data, x_var, y_var, title):
                     "margin-left": "2em",
                     "margin-right": "0em",
                     "font-weight": "bold"
-                }
-                )
+                })
     else:
 
         if 'float' in str(type(data_chart[0][x_var])):
@@ -322,9 +321,7 @@ def create_scatter_plot(data, x_var, y_var, hue_var, title):
                 ariaLabel=title
             )
     else:
-        with st.spinner("Cooking the scatter plot now..."):
-            st.error("Missing hue for scatter plot")
-            # print("Scatterplot: Plotted")
+        raise
 
 
 def create_swarm_plot(data, x_var, y_var, hue_var, title):
@@ -344,6 +341,19 @@ def create_swarm_plot(data, x_var, y_var, hue_var, title):
         max_y = round(data[y_var].max())
         min_x = round(data[x_var].min())
         max_x = round(data[x_var].max())
+
+        with mui.Typography:
+            html.div(
+                title,
+                css={
+                    "display": "block",
+                    "margin-top": "1em",
+                    "margin-bottom": "1em",
+                    "margin-left": "1em",
+                    "margin-right": "0em",
+                    "font-weight": "bold"
+                }
+            )
 
         nivo.SwarmPlot(
         data=data_to_plot,
@@ -415,18 +425,64 @@ def create_swarm_plot(data, x_var, y_var, hue_var, title):
             "legendOffset": -76
         })
     else:
-        with mui.Typography:
-            html.div(
-                html.p(title),
-                html.p("Not plot, in sufficient variables seleted..."),
-                css={
-                    "display": "block",
-                    "margin-top": "1em",
-                    "margin-bottom": "1em",
-                    "margin-left": "1em",
-                    "margin-right": "0em",
-                    "flex": 1,
-                    "minHeight": 0,
-                    "font-weight": "bold"
-                }
-            )
+        raise
+
+
+def create_pie_chart(data_to_plot,x_var, y_var, title):
+
+    lst = []
+
+    for x in range(0, len(data_to_plot)):
+        lst = lst + [f"hsl({random.randint(10, 255)}, 70%, 50%)"]
+
+    df_new= data_to_plot.reset_index().rename(columns={'index': 'id', y_var: 'value'})
+    df_new['id'] = df_new[x_var]
+    df_new['label'] = df_new[x_var]
+    df_new['color'] = lst
+    data_to_plot_json = df_new.to_dict('records')
+
+    with mui.Typography:
+        html.div(
+            title,
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-left": "1em",
+                "margin-right": "0em",
+                "font-weight": "bold"
+            }
+        )
+
+    nivo.Pie(
+        data=data_to_plot_json,
+        margin={"top": 20, "right": 40, "bottom": 85, "left": 40},
+        innerRadius=0.5,
+        padAngle=0.7,
+        cornerRadius=3,
+        activeOuterRadiusOffset=8,
+        borderWidth=1,
+        borderColor={
+            "from": 'color',
+            "modifiers": [
+                [
+                    'darker',
+                    0.2
+                ]
+            ]
+        },
+        arcLinkLabelsSkipAngle=10,
+        arcLinkLabelsTextColor="#333333",
+        arcLinkLabelsThickness=2,
+        arcLinkLabelsColor={"from": 'color'},
+        arcLabelsSkipAngle=10,
+        arcLabelsTextColor={
+            "from": 'color',
+            "modifiers": [
+                [
+                    'darker',
+                    2
+                ]
+            ]
+        }
+    )
