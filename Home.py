@@ -974,8 +974,8 @@ if UPLOADED_FILE is not None:
     with col_main_2:
         st.markdown("### Data Explanation 🔎")
         st.markdown("The topic below gives you a general feel of the dataset, click on the expander to see more.")
-        # with st.expander("See data explanation"):
-        get_data_overview(sample_data_overview)
+        with st.expander("See data explanation"):
+            get_data_overview(sample_data_overview)
 
         # Inspecting raw data
         with st.expander("See raw data"):
