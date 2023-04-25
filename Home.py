@@ -66,7 +66,7 @@ gpt3.openai.api_key = GPT_SECRETS
 
 with col_main_2:
     if not UPLOADED_FILE:
-        UPLOADED_FILE = "archive/views/sample_data_2.csv"
+        UPLOADED_FILE = "archive/views/sample_data.csv"
         st.markdown("*Application is currently running the sample dataset. To get insights from your own data, please upload your csv file.*")
 
 # Store the initial value of widgets in session state
