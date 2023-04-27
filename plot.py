@@ -486,3 +486,126 @@ def create_pie_chart(data_to_plot,x_var, y_var, title):
             ]
         }
     )
+
+def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
+
+    # Sort the column X
+    data_to_plot = data_to_plot.sort_values(by=[x_var])
+
+    for col, dtype in data_to_plot.dtypes.items():
+        if 'datetime' in str(dtype):
+            data_to_plot[col] = data_to_plot[col].dt.strftime('%Y-%m-%d')
+
+    if hue_var:
+        random_color = f"hsl({random.randint(10, 255)}, 70%, 50%)"
+        data_to_plot = [{
+            "id": y_var,
+            "color": random_color,
+            "data": data_to_plot.rename(columns={x_var: 'x', y_var: 'y'}).to_dict('records')
+        }]
+    else:
+        data_to_plot = data_to_plot.rename(columns={'Date': 'x', 'sum': 'y'})
+
+    with mui.Typography:
+        html.div(
+            title,
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-left": "1em",
+                "margin-right": "0em",
+                "font-weight": "bold"
+            }
+        )
+
+    nivo.Line(
+        data=data_to_plot,
+        margin={ "top": 20, "right": 120, "bottom": 130, "left": 60 },
+        xScale={ "type": 'point' },
+        yScale={
+        "type": 'linear',
+        "min": 'auto',
+        "max": 'auto'},
+        yFormat=" >-.2f",
+        axisBottom={
+        "orient": 'bottom',
+        "tickSize": 1,
+        "tickPadding": 5,
+        "tickRotation": 45,
+        "legend": x_var,
+        "legendOffset": 60,
+        "legendPosition": 'middle'
+        },
+        axisLeft={
+            "orient": 'left',
+            "tickSize": 5,
+            "tickPadding": 5,
+            "tickRotation": 0,
+            "legend": 'count',
+            "legendOffset": -40,
+            "legendPosition": 'middle'
+        },
+        pointSize=6,
+        pointColor={ "theme": 'background' },
+        pointBorderWidth=2,
+        pointBorderColor={"from": 'serieColor' },
+        pointLabelYOffset=-6,
+        useMesh="true",
+        legends=[
+            {
+                "anchor": 'top-right',
+                "direction": 'column',
+                "justify": "false",
+                "translateX": 100,
+                "translateY": 0,
+                "itemsSpacing": 0,
+                "itemDirection": 'left-to-right',
+                "itemWidth": 90,
+                "itemHeight": 20,
+                "itemOpacity": 0.75,
+                "symbolSize": 12,
+                "symbolShape": 'circle',
+                "symbolBorderColor": 'rgba(0, 0, 0, .5)',
+                "effects": [
+                    {
+                        "on": 'hover',
+                        "style": {
+                            "itemBackground": 'rgba(0, 0, 0, .03)',
+                            "itemOpacity": 1
+                        }
+                    }
+                ]
+            }
+        ]
+    )
+
+
+def create_error_plot(title):
+    with mui.Typography:
+        html.div(
+            title,
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-left": "1em",
+                "margin-right": "0em",
+                "font-weight": "bold"
+            }
+        )
+        html.div(
+            html.p("Error"),
+            css={
+                "display": "block",
+                "margin-top": "1em",
+                "margin-bottom": "1em",
+                "margin-right": "0em",
+                "flex": 1,
+                "minHeight": 0,
+                "font-weight": "900",
+                "font-size": "x-large",
+                "text-align": "center"
+            }
+        )
+

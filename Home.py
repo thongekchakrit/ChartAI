@@ -3,12 +3,10 @@ import streamlit as st
 # import yaml
 # from yaml.loader import SafeLoader
 from streamlit_elements import elements, mui
-from streamlit.components.v1 import html
 from streamlit_elements import dashboard
 from pandas.errors import ParserError
 from streamlit_chat import message
 import streamlit_toggle as tog
-import altair as alt
 import pandas as pd
 import numpy as np
 import json
@@ -37,7 +35,7 @@ import random
 #
 # if authentication_status:
 st.set_page_config(page_title="AutoVizAI Automated Data Analysis AI", page_icon="assets/images/favicon.png", layout="wide", initial_sidebar_state='collapsed')
-col_main_1, col_main_2, col_main_3 = st.columns([1,4,1])
+col_main_1, col_main_2, col_main_3 = st.columns([1,5,1])
 
 with col_main_2:
     st.markdown("# **AutoVizAI - Text to Graphs**")
@@ -66,7 +64,7 @@ gpt3.openai.api_key = GPT_SECRETS
 
 with col_main_2:
     if not UPLOADED_FILE:
-        UPLOADED_FILE = "archive/views/sample_data.csv"
+        UPLOADED_FILE = "archive/views/sample_data_2.csv"
         st.markdown("*Application is currently running the sample dataset. To get insights from your own data, please upload your csv file.*")
 
 # Store the initial value of widgets in session state
@@ -204,8 +202,8 @@ def query(sample_data_overview, new_question):
     return response
 
 @st.cache_data
-def generate_sql_gpt(_data_schema, new_question):
-    # print("Query: ", new_question)
+def generate_sql_gpt(_data_schema, new_question, _sample_data):
+    print("Query: ", new_question)
     prompt = f"""
     
     Example Context: 
@@ -217,7 +215,7 @@ def generate_sql_gpt(_data_schema, new_question):
     Write me an  SQL script in duckDB language that can answer the following question: "How many authors are there in the year 2022?". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
-    If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
+    Please convert all result to lower case.
     
     Answer: 
     <sql_start>
@@ -247,12 +245,14 @@ def generate_sql_gpt(_data_schema, new_question):
     You are a data analyst
     Given the data with schema: 
     {_data_schema}
+    Given sample data:
+    {_sample_data}
     
     Question: 
     Write me an SQL script in duckDB language that can answer the following question:  {new_question}
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
-    If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
+    Please convert all result to lower case.
     
     """
 
@@ -264,6 +264,8 @@ def generate_sql_gpt(_data_schema, new_question):
         query_recommendation = re.search(r"<sql_start>(.*)<sql_end>", response.replace("\n", ' ')).group(1).strip()
     except:
         query_recommendation = None
+
+    print(query_recommendation)
 
     return query_recommendation
 
@@ -427,10 +429,10 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     :return: Recursive response from chat GPT
     '''
 
-    # print("Recursive batch length: ", len(list_of_df[0].to_json()))
-    # print("Recursive batch: ", list_of_df[0])
-    # print("Length: ", len(list_of_result))
-    # print("Content: ", list_of_result)
+    print("Recursive batch length: ", len(list_of_df[0].to_json()))
+    print("Recursive batch: ", list_of_df[0])
+    print("Length: ", len(list_of_result))
+    print("Content: ", list_of_result)
     if len(list_of_df) <= 10:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
@@ -501,12 +503,23 @@ def split_words_into_sublists(word_list, max_words_per_list):
 @st.cache_data
 def explain_result(query_recommendation, new_question, dataframe_new):
 
-    batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
-    # print(f"Batch size: {batch_size}")
+    print("len(dataframe_new.to_json()): ", len(dataframe_new.to_json()))
+    ratio_character = len(dataframe_new.to_json())/ 3200
+    is_modulo = len(dataframe_new.to_json()) % 3200 > 0
+    print(len(dataframe_new.to_json()) % 3200 > 0 )
+    if ratio_character < 1:
+        batch_size = 1
+    else:
+        batch_size = round(ratio_character + is_modulo)
+    print(f"Batch size: {batch_size}")
     list_of_df = np.array_split(dataframe_new, batch_size)
     # sample data to first 10 dataframe to get result, to remove in prod
     list_of_df = list_of_df[:3]
     list_of_result = []
+    for col, dtype in dataframe_new.dtypes.items():
+        if 'datetime' in str(dtype):
+            dataframe_new[col] = dataframe_new[col].dt.strftime('%Y-%m-%d')
+            dataframe_new = dataframe_new.sort_values(by=[col])
 
     with st.spinner("Working on the analysis, please wait..."):
         response = recursion_batch(list_of_df, list_of_result, new_question, query_recommendation)
@@ -518,6 +531,7 @@ def explain_result(query_recommendation, new_question, dataframe_new):
             # print("Processing sub explaination")
             max_words_per_list = 3500
             sublists = split_words_into_sublists(response, max_words_per_list)
+            print("Sublist of result: ", sublists)
             response = recursive_summarizer_sub(sublists, list_of_result_response, new_question)
             response = '\n'.join(response)
         else:
@@ -536,16 +550,22 @@ def get_dataframe_from_duckdb_query(query):
     return dataframe_new
 
 @st.cache_data
-def query_text(_schema_data, new_question):
+def query_text(_schema_data, new_question, _sample_data):
     # print("Querying the GPT...")
     # Get the query
-    query_recommendation = re.sub(" +", " ", generate_sql_gpt(schema_data, new_question))
+    query_recommendation = re.sub(" +", " ", generate_sql_gpt(schema_data, new_question, _sample_data))
+    # Create the new dataframe
     dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+    batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
+    print("Batch size: ", batch_size)
+    print("Shape: ", dataframe_new)
+    print("\n")
     chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = query_chart_recommendation(schema_data, new_question, query_recommendation, len(dataframe_new))
 
     if len(dataframe_new) > 0:
+        pass
         response = explain_result(query_recommendation, new_question, dataframe_new)
-        # print("Response", response)
+        print("Response", response)
     else:
         response = query_no_result(_schema_data, new_question, query_recommendation)
         chart_recommendation = None
@@ -620,12 +640,6 @@ def check_layout_user_exists(username, path="session_layout/layout.json"):
 def show_dashboard(session_all_result, index_question_counter):
     for recommendation in session_all_result:
         if recommendation['hide_graph'] == False:
-            # print("LINE 782 DIFF CHECK: ", Diff(st.session_state["all_result"], st.session_state["all_result_hidden"]))
-            # print("\n")
-            # print("LINE 784 all recom: ", st.session_state["all_result"])
-            # print("\n")
-            # print("LINE 786 all hidden: ", st.session_state["all_result_hidden"])
-            # print(st.session_state["all_result"])
             query_recommendation = recommendation['query_recommendation']
             question = recommendation['question']
             x_recommendation = recommendation['x_recommendation']
@@ -643,111 +657,63 @@ def show_dashboard(session_all_result, index_question_counter):
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
+                            if len(dataframe_new) <= 0:
+                                raise
                             plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
                         except:
-                            with mui.Typography:
-                                html.div(
-                                    html.p(title_recommendation),
-                                    css={
-                                        "display": "block",
-                                        "margin-top": "1em",
-                                        "margin-bottom": "1em",
-                                        "margin-left": "1em",
-                                        "margin-right": "0em",
-                                        "flex": 1,
-                                        "minHeight": 0,
-                                        "font-weight": "bold"
-                                    }
-                                )
-                                html.p("Error")
+                            plot.create_error_plot(title_recommendation)
 
             elif "metric" in chart_recommendation.lower():
                 with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                     try:
+                        if len(dataframe_new) <= 0:
+                            raise
                         plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
                     except:
-                        with mui.Typography:
-                            html.div(
-                                html.p(title_recommendation),
-                                css={
-                                    "display": "block",
-                                    "margin-top": "1em",
-                                    "margin-bottom": "1em",
-                                    "margin-left": "1em",
-                                    "margin-right": "0em",
-                                    "flex": 1,
-                                    "minHeight": 0,
-                                    "font-weight": "bold"
-                                }
-                            )
-                            html.p("Error")
+                        plot.create_error_plot(title_recommendation)
 
             elif "scatter" in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
+                            if len(dataframe_new) <= 0:
+                                raise
                             plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            with mui.Typography:
-                                html.div(
-                                    html.p(title_recommendation),
-                                    css={
-                                        "display": "block",
-                                        "margin-top": "1em",
-                                        "margin-bottom": "1em",
-                                        "margin-left": "1em",
-                                        "margin-right": "0em",
-                                        "flex": 1,
-                                        "minHeight": 0,
-                                        "font-weight": "bold"
-                                    }
-                                )
-                                html.p("Error")
+                            plot.create_error_plot(title_recommendation)
 
             elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
+                            if len(dataframe_new) <= 0:
+                                raise
                             plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            with mui.Typography:
-                                html.div(
-                                    html.p(title_recommendation),
-                                    css={
-                                        "display": "block",
-                                        "margin-top": "1em",
-                                        "margin-bottom": "1em",
-                                        "margin-left": "1em",
-                                        "margin-right": "0em",
-                                        "flex": 1,
-                                        "minHeight": 0,
-                                        "font-weight": "bold"
-                                    }
-                                )
-                                html.p("Error")
+                            plot.create_error_plot(title_recommendation)
 
             elif 'pie' in chart_recommendation.lower():
                 print("Pie plot")
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
+                            if len(dataframe_new) <= 0:
+                                raise
                             plot.create_pie_chart(dataframe_new,  x_recommendation, y_recommendation, title_recommendation)
                         except:
-                            with mui.Typography:
-                                html.div(
-                                    html.p(title_recommendation),
-                                    css={
-                                        "display": "block",
-                                        "margin-top": "1em",
-                                        "margin-bottom": "1em",
-                                        "margin-left": "1em",
-                                        "margin-right": "0em",
-                                        "flex": 1,
-                                        "minHeight": 0,
-                                        "font-weight": "bold"
-                                    }
-                                )
-                                html.p("Error")
+                            plot.create_error_plot(title_recommendation)
+
+            elif 'line' in chart_recommendation.lower():
+                print("Line plot")
+                if (x_recommendation != 'None') & (y_recommendation != 'None'):
+                    with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+                        try:
+                            if len(dataframe_new) <= 0:
+                                raise
+                            plot.create_line_chart(dataframe_new,  x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+                        except Exception as e:
+                            print(e)
+                            plot.create_error_plot(title_recommendation)
 
             index_question_counter+=1
 
@@ -772,62 +738,70 @@ def show_messages(_index_generated, _index_past, _i, is_result):
 
 
 
-def ask_new_question(sample_question, schema_data):
+def ask_new_question(sample_question, schema_data, sample_data):
     text = st.empty()
     key_type = 'normal'
     index_questions = 'question_dict_' + key_type
     index_generated = 'generated_' + key_type
     index_past = 'past_' + key_type
+
+    form = st.form('user_form', clear_on_submit = True)
+    if sample_question:
+        new_question = form.text_area("Typing in your own question below...👇", value= sample_question, key = key_type, label_visibility="collapsed").strip()
+        submit_label = "Clear"
+    else:
+        new_question = form.text_area("Typing in your own question below...👇", key = key_type, label_visibility="collapsed").strip()
+        submit_label = "Submit"
+
+    submit_button = form.form_submit_button(label=submit_label)
+
     chat_col, dashboard_col = st.tabs(["Textual View", "Graphical View"])
 
+    if (submit_button) or (sample_question):
+        if new_question:
+            if new_question not in st.session_state[index_questions]:
+                st.session_state[index_questions][new_question] = ''
+                for key in st.session_state[index_questions]:
+                    if new_question == key:
 
-    if sample_question:
-        new_question = text.text_area("Typing in your own question below...👇", value= sample_question, key = key_type, label_visibility="collapsed").strip()
-    else:
-        new_question = text.text_area("Typing in your own question below...👇", key = key_type, label_visibility="collapsed").strip()
+                        output, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key, sample_data)
 
-    if new_question:
-        if new_question not in st.session_state[index_questions]:
-            st.session_state[index_questions][new_question] = ''
-            for key in st.session_state[index_questions]:
-                if new_question == key:
+                        if chart_recommendation != None:
+                            resp = {
+                                "question": new_question,
+                                "query_recommendation": query_recommendation,
+                                "chart_recommendation": chart_recommendation,
+                                "x_recommendation": x_recommendation,
+                                "y_recommendation": y_recommendation,
+                                "hue_recommendation": hue_recommendation,
+                                "title_recommendation": title_recommendation,
+                                "hide_graph": False
+                            }
+                            # Store the results of the questions
+                            st.session_state["all_result"].append(resp)
 
-                    output, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key)
+                            print("Summary results: \n", resp)
 
-                    if chart_recommendation != None:
-                        resp = {
-                            "question": new_question,
-                            "query_recommendation": query_recommendation,
-                            "chart_recommendation": chart_recommendation,
-                            "x_recommendation": x_recommendation,
-                            "y_recommendation": y_recommendation,
-                            "hue_recommendation": hue_recommendation,
-                            "title_recommendation": title_recommendation,
-                            "hide_graph": False
-                        }
-                        st.session_state["all_result"].append(resp)
+                        # Store the question that was asked into past question index
+                        st.session_state[index_past].append(new_question)
+                        output_template = f"""
+                        {output} \n\n Query:\n{query_recommendation}
+                        """
 
-                        # print("Summary results: \n", resp)
-
-                    st.session_state[index_past].append(new_question)
-                    output_template = f"""
-                    {output} \n\n Query:\n{query_recommendation}
-                    """
-
-                    st.session_state[index_generated].append(output_template)
+                        st.session_state[index_generated].append(output_template)
 
 
-        else:
-            st.info('Question exists, bringing question to recent view...', icon="⚠️")
-            exist_question_index = st.session_state[index_past].index(new_question)
-            exist_question = st.session_state[index_past].pop(exist_question_index)
-            # print(f"This question exists: {exist_question}")
-            exist_output = st.session_state[index_generated].pop(exist_question_index)
-            # print(f"This output exists: {exist_output}")
+            else:
+                st.info('Question exists, bringing question to recent view...', icon="⚠️")
+                exist_question_index = st.session_state[index_past].index(new_question)
+                exist_question = st.session_state[index_past].pop(exist_question_index)
+                # print(f"This question exists: {exist_question}")
+                exist_output = st.session_state[index_generated].pop(exist_question_index)
+                # print(f"This output exists: {exist_output}")
 
-            # Reinsert the question and output
-            st.session_state[index_past].append(exist_question)
-            st.session_state[index_generated].append(exist_output)
+                # Reinsert the question and output
+                st.session_state[index_past].append(exist_question)
+                st.session_state[index_generated].append(exist_output)
 
     #########################################################################################################################
     ## Populating the question and answers
@@ -885,63 +859,38 @@ def ask_new_question(sample_question, schema_data):
                     question = recommendation['question']
                     chart_recommendation = recommendation['chart_recommendation']
                     if chart_recommendation != None:
-                        if ("bar" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) or ("scatter" in chart_recommendation.lower()) \
-                                or 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower() or 'pie' in chart_recommendation.lower():
-
-                            if 'pie' in chart_recommendation.lower():
-                                width = 4
-                                height = 2
-                            else:
-                                width = 3
-                                height = 2
-                            # First, build a default layout for every element you want to include in your dashboard
-                            item_key = "item_" + str(question)
-
-                            if len(layout) > 0:
-                                for layer in layout:
-                                    if layer['i'] == item_key:
-                                        pass
-                                    elif item_key not in str(layout):
-                                        layout = layout + [
-                                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                            dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
-                                        ]
-                                    else:
-                                        pass
-                            else:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
-                                ]
-                            counter_recommendation += 1
-
+                        if 'pie' in chart_recommendation.lower():
+                            width = 4
+                            height = 2
+                        elif 'line' in chart_recommendation.lower():
+                            width = 6
+                            height = 2
+                        elif 'metric' in chart_recommendation.lower():
+                            width = 2
+                            height = 2
                         else:
-                            # First, build a default layout for every element you want to include in your dashboard
-                            item_key = "item_" + str(question)
+                            width = 3
+                            height = 2
+                        # First, build a default layout for every element you want to include in your dashboard
+                        item_key = "item_" + str(question)
 
-                            if len(layout) > 0:
-                                for layer in layout:
-                                    if layer['i'] == item_key:
-                                        pass
-                                    elif item_key not in str(layout):
-                                        # print(f"(Line 728) {layer['i']} !does not match! {item_key}")
-                                        # print(f"Adding {item_key}")
-                                        # print("\n")
-                                        layout = layout + [
-                                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                            dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
-                                        ]
-                                    else:
-                                        pass
-                            else:
-                                layout = layout + [
-                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                    dashboard.Item(item_key, 0, counter_recommendation, 2, 1, isResizable=True, isDraggable=True)
-                                ]
-                            counter_recommendation += 1
-
-                # print("(Line 734) Layout: ", layout)
-
+                        if len(layout) > 0:
+                            for layer in layout:
+                                if layer['i'] == item_key:
+                                    pass
+                                elif item_key not in str(layout):
+                                    layout = layout + [
+                                        # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                        dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
+                                    ]
+                                else:
+                                    pass
+                        else:
+                            layout = layout + [
+                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
+                            ]
+                        counter_recommendation += 1
             def handle_layout_change(updated_layout):
                 # You can save the layout in a file, or do anything you want with it.
                 # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
@@ -987,6 +936,7 @@ if UPLOADED_FILE is not None:
 
         data_schema = convert_datatype(DATA)
         schema_data = str(data_schema.dtypes.to_dict().items())
+        sample_data = str(DATA.sample(n=3).to_dict().items())
 
         st.markdown("### Exploration 💬")
         st.write("Below are some sample questions, pick one of the questions below to see how our AI can analyse your question.")
@@ -1024,7 +974,7 @@ if UPLOADED_FILE is not None:
 
         # Generate the ask question bar
         st.markdown("Type in your question below (Press Ctrl+Enter to key in question):")
-        ask_new_question(question, schema_data)
+        ask_new_question(question, schema_data, sample_data)
         # elif authentication_status is False:
         #     st.error('Username/password is incorrect')
         # elif authentication_status is None:
