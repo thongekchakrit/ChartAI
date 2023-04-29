@@ -14,99 +14,16 @@ def create_bar_chart(data, x_var, y_var, hue_var, title):
     :return: bar chart
     """
 
-    try:
+    if (x_var != 'None') & (y_var != 'None'):
 
-        if (x_var != 'None') & (y_var != 'None'):
+        if hue_var == 'None':
+            hue_var = x_var
 
-            hue_var = hue_var.split(",")[0]
-            x_var = x_var.split(",")[0]
-            y_var = y_var.split(",")[0]
+        hue_var = hue_var.split(",")[0]
+        print("hue_var", hue_var)
+        x_var = x_var.split(",")[0]
+        y_var = y_var.split(",")[0]
 
-            with mui.Typography:
-                html.div(
-                    title,
-                    css={
-                        "display": "block",
-                        "margin-top": "1em",
-                        "margin-bottom": "1em",
-                        "margin-left": "1em",
-                        "margin-right": "0em",
-                        "font-weight": "bold"
-                    }
-                )
-
-            data_chart = data.to_dict('records')
-            # print("data chart", data_chart)
-            # print("x_var", x_var)
-            # print("y_var", y_var)
-            # print("hue_var", hue_var)
-
-            nivo.Bar(
-                data=data_chart,
-                layout="vertical",
-                keys=[y_var],
-                indexBy=x_var,
-                margin={"top": 20, "right": 130, "bottom": 100, "left": 60},
-                padding={0.4},
-                valueScale={"type": 'linear'},
-                indexScale={"type": 'band', "round": "true"},
-                colors={"scheme": 'pastel1'},
-                borderColor={
-                    "from": 'color',
-                    "modifiers": [
-                        [
-                            'darker',
-                            1.6
-                        ]
-                    ]
-                },
-                axisBottom={
-                    'orient': 'bottom',
-                    "tickSize": 5,
-                    "tickPadding": 5,
-                    "tickRotation": 0,
-                    "legend": str(x_var),
-                    "legendPosition": 'middle',
-                    "legendOffset": 32
-                },
-                axisLeft={
-                    'orient': 'left',
-                    "tickSize": 5,
-                    "tickPadding": 5,
-                    "tickRotation": 0,
-                    "legend": str(y_var),
-                    "legendPosition": 'middle',
-                    "legendOffset": -40
-                },
-                legends=[
-                    {
-                        "dataFrom": 'keys',
-                        "anchor": 'top-right',
-                        "direction": 'column',
-                        "margin": { "left": 10 },
-                        "justify": "false",
-                        "translateX": 120,
-                        "translateY": 0,
-                        "itemsSpacing": 2,
-                        "itemWidth": 100,
-                        "itemHeight": 20,
-                        "itemDirection": 'left-to-right',
-                        "itemOpacity": 0.85,
-                        "symbolSize": 20,
-                        "effects": [
-                            {
-                                "on": 'hover',
-                                "style": {
-                                    "itemOpacity": 1
-                                }
-                            }
-                        ]
-                    }
-                ],
-                role="application",
-                ariaLabel=title,
-            )
-    except:
         with mui.Typography:
             html.div(
                 title,
@@ -119,7 +36,86 @@ def create_bar_chart(data, x_var, y_var, hue_var, title):
                     "font-weight": "bold"
                 }
             )
-            html.div("Error")
+        if len([x for x in data[x_var].unique()]) > 10:
+            x_tick_rotation = 25
+            bottom_padding = 150
+            legendOffset = 65
+        else:
+            x_tick_rotation = 0
+            bottom_padding = 100
+            legendOffset = 32
+        data_chart = data.to_dict('records')
+        # print("x_var", x_var)
+        # print("y_var", y_var)
+        # print("hue_var", hue_var)
+        print("Data", data_chart)
+
+        nivo.Bar(
+            data=data_chart,
+            layout="vertical",
+            keys=[y_var],
+            indexBy=x_var,
+            margin={"top": 20, "right": 130, "bottom": bottom_padding, "left": 60},
+            padding={0.4},
+            valueScale={"type": 'linear'},
+            indexScale={"type": 'band', "round": "true"},
+            colors={"scheme": 'pastel1'},
+            borderColor={
+                "from": 'color',
+                "modifiers": [
+                    [
+                        'darker',
+                        1.6
+                    ]
+                ]
+            },
+            axisBottom={
+                'orient': 'bottom',
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": x_tick_rotation,
+                "legend": str(x_var),
+                "legendPosition": 'middle',
+                "legendOffset": legendOffset
+            },
+            axisLeft={
+                'orient': 'left',
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": 0,
+                "legend": str(y_var),
+                "legendPosition": 'middle',
+                "legendOffset": -40
+            },
+            legends=[
+                {
+                    "dataFrom": 'keys',
+                    "anchor": 'top-right',
+                    "direction": 'column',
+                    "margin": { "left": 10 },
+                    "justify": "false",
+                    "translateX": 120,
+                    "translateY": 0,
+                    "itemsSpacing": 2,
+                    "itemWidth": 100,
+                    "itemHeight": 20,
+                    "itemDirection": 'left-to-right',
+                    "itemOpacity": 0.85,
+                    "symbolSize": 20,
+                    "effects": [
+                        {
+                            "on": 'hover',
+                            "style": {
+                                "itemOpacity": 1
+                            }
+                        }
+                    ]
+                }
+            ],
+            role="application",
+            ariaLabel=title,
+        )
+
 
 
 def create_metric_chart(data, x_var, y_var, title):
@@ -428,10 +424,12 @@ def create_swarm_plot(data, x_var, y_var, hue_var, title):
         raise
 
 
-def create_pie_chart(data_to_plot,x_var, y_var, title):
+def create_pie_chart(data_to_plot,x_var, y_var, hue_var, title):
 
     lst = []
 
+    if x_var == 'None':
+        x_var = hue_var
     for x in range(0, len(data_to_plot)):
         lst = lst + [f"hsl({random.randint(10, 255)}, 70%, 50%)"]
 
@@ -490,6 +488,14 @@ def create_pie_chart(data_to_plot,x_var, y_var, title):
 def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
 
     # Sort the column X
+    if hue_var:
+        hue_var = hue_var.split(",")[0]
+    if x_var:
+        x_var = x_var.split(",")[0]
+        # x_var = 'month'
+    if y_var:
+        y_var = y_var.split(",")[0]
+
     data_to_plot = data_to_plot.sort_values(by=[x_var])
 
     for col, dtype in data_to_plot.dtypes.items():
@@ -497,14 +503,26 @@ def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
             data_to_plot[col] = data_to_plot[col].dt.strftime('%Y-%m-%d')
 
     if hue_var:
+        list_hue_var= [x for x in data_to_plot[hue_var].unique()]
+        lst_of_dict = []
+
+        for x in list_hue_var:
+            lst_of_dict = lst_of_dict + [{
+                "id": x,
+                "color": f"hsl({random.randint(10, 255)}, 70%, 50%)",
+                "data": data_to_plot[data_to_plot[hue_var] == x].rename(columns={x_var: 'x', y_var: 'y'}).to_dict('records')
+            }]
+
+        data_to_plot = lst_of_dict
+    else:
         random_color = f"hsl({random.randint(10, 255)}, 70%, 50%)"
         data_to_plot = [{
             "id": y_var,
             "color": random_color,
             "data": data_to_plot.rename(columns={x_var: 'x', y_var: 'y'}).to_dict('records')
         }]
-    else:
-        data_to_plot = data_to_plot.rename(columns={'Date': 'x', 'sum': 'y'})
+
+    print(data_to_plot)
 
     with mui.Typography:
         html.div(
@@ -581,19 +599,8 @@ def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
     )
 
 
-def create_error_plot(title):
+def create_error_plot():
     with mui.Typography:
-        html.div(
-            title,
-            css={
-                "display": "block",
-                "margin-top": "1em",
-                "margin-bottom": "1em",
-                "margin-left": "1em",
-                "margin-right": "0em",
-                "font-weight": "bold"
-            }
-        )
         html.div(
             html.p("Error"),
             css={

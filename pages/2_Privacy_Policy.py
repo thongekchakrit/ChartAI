@@ -1,4 +1,5 @@
 import streamlit as st
+st.set_page_config(page_icon="assets/images/favicon.png")
 
 col_main_1, col_main_2, col_main_3 = st.columns([1,4,1])
 
@@ -12,7 +13,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
 st.markdown("""
-## Privacy Policy
+# Privacy Policy
 Thank you for using our website. We understand the importance of your privacy and are committed to protecting your personal information. This privacy policy outlines how we collect, use, and disclose information about our users.
 
 ## Collection of Information

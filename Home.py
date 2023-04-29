@@ -93,6 +93,9 @@ if "all_result_hidden" not in st.session_state:
 if 'question_dict' not in st.session_state:
     st.session_state['question_dict'] = {}
 
+if 'sample_question_generation' not in st.session_state:
+    st.session_state['sample_question_generation'] = 0
+
 
 @st.cache_resource
 def load_data(UPLOADED_FILE):
@@ -110,7 +113,7 @@ def load_data(UPLOADED_FILE):
 
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def rename_dataset_columns(dataframe):
     dataframe.columns = dataframe.columns.str.replace('[#,@,&,$,(,)]', '')
     dataframe.columns = [re.sub(r'%|_%', '_percentage', x) for x in dataframe.columns]
@@ -119,7 +122,7 @@ def rename_dataset_columns(dataframe):
     dataframe.columns = [x.strip() for x in dataframe.columns]
     return dataframe
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def convert_datatype(df):
     """Automatically detect and convert (in place!) each
     dataframe column of datatype 'object' to a datetime just
@@ -136,16 +139,16 @@ def convert_datatype(df):
     df = df.convert_dtypes()
     return df
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_raw_table(data):
     st.write(data)
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def check_data_have_object(data):
     resp = data.dtypes.to_list()
     return resp
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_data_overview(header):
     prompt =  f"Format your answer to markdown latex. Use markdown font size 3. " \
               f"Please do not include heading or subheading." \
@@ -156,7 +159,7 @@ def get_data_overview(header):
     response = gpt3.gpt_promt(prompt)
     st.markdown(response['content'])
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_summary_statistics(dataframe):
 
     # check dataframe dtype
@@ -188,7 +191,7 @@ def get_summary_statistics(dataframe):
         st.markdown(response['content'])
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def query(sample_data_overview, new_question):
     prompt = f"You are an actuary, " \
              f"Given the csv file sample data with headers: {sample_data_overview}, " \
@@ -201,7 +204,7 @@ def query(sample_data_overview, new_question):
     st.session_state['question_dict_dataset input analysis - visuals'][new_question] = dataframe_new
     return response
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def generate_sql_gpt(_data_schema, new_question, _sample_data):
     print("Query: ", new_question)
     prompt = f"""
@@ -215,6 +218,7 @@ def generate_sql_gpt(_data_schema, new_question, _sample_data):
     Write me an  SQL script in duckDB language that can answer the following question: "How many authors are there in the year 2022?". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    For bar chart, swarm plot, box plot, please make sure to include 3 columns.
     Please convert all result to lower case.
     
     Answer: 
@@ -233,6 +237,7 @@ def generate_sql_gpt(_data_schema, new_question, _sample_data):
     Write me an  SQL script in duckDB language that can answer the following question: " What is the correlation between BMI and charges??". 
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    For bar chart, swarm plot, box plot, please make sure to include 3 columns.
     If correlation or corr or percentile is asked and one of the variable schema is string. Convert it into integer using one-hot encoding.
     
     Answer: 
@@ -252,6 +257,7 @@ def generate_sql_gpt(_data_schema, new_question, _sample_data):
     Write me an SQL script in duckDB language that can answer the following question:  {new_question}
     Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
     Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+    For bar chart, swarm plot, box plot, please make sure to include 3 columns.
     Please convert all result to lower case.
     
     """
@@ -269,8 +275,8 @@ def generate_sql_gpt(_data_schema, new_question, _sample_data):
 
     return query_recommendation
 
-@st.cache_data
-def query_chart_recommendation(_data_schema, new_question, recommened_query, number_of_records):
+@st.cache_data(show_spinner=False)
+def query_chart_recommendation(_data_schema, new_question, recommened_query, number_of_records, _sample_data):
     prompt = f""" The schema of the data:
         dict_items([('age', Int64Dtype()), ('sex', string[python]), ('bmi', Float64Dtype()), ('children', Int64Dtype()), ('smoker', string[python]), ('region', string[python]), ('charges', Float64Dtype())])
         
@@ -288,7 +294,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
         Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
         
-        Recommend the x and y variables for the plot.
+        Bar Chart, Scatter plot, swarm plot must have recommended hue.
+        Recommend the x and y variables for the plot based on the query and schema provided.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
         y in the tag "<y_var_start>" and "<y_var_end>" .
         hue/class in "<hue_var_start>" and "<hue_var_end>".
@@ -319,7 +326,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
         Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
         
-        Recommend the x and y variables for the plot.
+        Bar Chart, Scatter plot, swarm plot must have recommended hue.
+        Recommend the x and y variables for the plot based on the query and schema provided.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
         y in the tag "<y_var_start>" and "<y_var_end>" .
         hue/class in "<hue_var_start>" and "<hue_var_end>" .
@@ -348,7 +356,8 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
         Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
         
-        Recommend the x and y variables for the plot.
+        Bar Chart, Scatter plot, swarm plot must have recommended hue.
+        Recommend the x and y variables for the plot based on the query and schema provided.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>" .
         y in the tag "<y_var_start>" and "<y_var_end>" .
         hue/class in "<hue_var_start>" and "<hue_var_end>".
@@ -370,13 +379,16 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         {recommened_query}
         
         Total number of records: {number_of_records}
+        
+        Sample Data: {_sample_data}
 
         Based on the question: {new_question} and the query above, 
         recommend me a graph that can be used to best represent the question and the SQL generated.
         If total records is 1 and sql query has 1 column, recommend metric plot and recommended x variable.
         Put the recommended chart in the tag "<chart_start>" and end with "<chart_end>".
         
-        Recommend the x and y variables for the plot.
+        Bar Chart, Scatter plot, swarm plot must have recommended hue.
+        Recommend the x and y variables for the plot based on the query and schema provided.
         Put the recommendated x in the tag "<x_var_start>" and "<x_var_end>".
         y in the tag "<y_var_start>" and "<y_var_end>" .
         hue/class in "<hue_var_start>" and "<hue_var_end>".
@@ -385,8 +397,6 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
         Give an appropriate title. Put the title in the tag "<title_start>" and "<title_end>"
 
         """
-
-    # print(prompt)
 
     response = gpt3.gpt_promt_davinci(prompt)
 
@@ -407,10 +417,10 @@ def query_chart_recommendation(_data_schema, new_question, recommened_query, num
 
     return chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def query_no_result(_sample_data_overview, new_question, sql_query):
 
-    prompt = f"You are an actuary, " \
+    prompt = f"You are an analyst, " \
              f"Given the data with schema: {_sample_data_overview}, " \
              f"you have generated no result for the question '{new_question}'. " \
              f"using the sql query '{sql_query}'. " \
@@ -419,7 +429,7 @@ def query_no_result(_sample_data_overview, new_question, sql_query):
     response = gpt3.gpt_promt_davinci(prompt)
     return response
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def recursion_batch(list_of_df, list_of_result, new_question, query_recommendation):
     '''
     :param query_recommendation: The query that was created by GPT3 API
@@ -436,7 +446,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     if len(list_of_df) <= 10:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
-            prompt = f"You are an actuary, " \
+            prompt = f"You are an analyst, " \
                      f"Please give a report and insights of the result in human readable text: " \
                      f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
                      f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
@@ -445,7 +455,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
             return list_of_result
         else:
             dataframe_json = list_of_df[0].to_json()
-            prompt = f"You are an actuary, " \
+            prompt = f"You are an analyst, " \
                      f"Please give a report and insights of the result in human readable text: " \
                      f"The question '{new_question}' was asked. The result has been generated using {query_recommendation}," \
                      f"Answering in a way that answers the question, explain the result: {dataframe_json}" \
@@ -457,7 +467,7 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
         st.error('Performing huge data set analysis is disabled for now...')
         return "Sorry, we've disabled huge processing of large file insights for now..."
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def recursive_summarizer_sub(list_of_response, list_of_result_response, new_question):
 
     if len(list_of_response) < 2:
@@ -479,7 +489,7 @@ def recursive_summarizer_sub(list_of_response, list_of_result_response, new_ques
 #         response = recursive_summarizer_sub(response, list_of_summarize_text, new_question)
 #         return recursive_summarizer_main(response, list_of_response, new_question)
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def split_words_into_sublists(word_list, max_words_per_list):
     """
     Joins words in a list together and splits them into sublists with a maximum word count
@@ -500,7 +510,7 @@ def split_words_into_sublists(word_list, max_words_per_list):
 
     return sublists
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def explain_result(query_recommendation, new_question, dataframe_new):
 
     print("len(dataframe_new.to_json()): ", len(dataframe_new.to_json()))
@@ -521,8 +531,7 @@ def explain_result(query_recommendation, new_question, dataframe_new):
             dataframe_new[col] = dataframe_new[col].dt.strftime('%Y-%m-%d')
             dataframe_new = dataframe_new.sort_values(by=[col])
 
-    with st.spinner("Working on the analysis, please wait..."):
-        response = recursion_batch(list_of_df, list_of_result, new_question, query_recommendation)
+    response = recursion_batch(list_of_df, list_of_result, new_question, query_recommendation)
 
     if response:
         list_of_result_response = []
@@ -540,27 +549,48 @@ def explain_result(query_recommendation, new_question, dataframe_new):
 
     return response
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_dataframe_from_duckdb_query(query):
     try:
         dataframe_new = duckdb.query(query).df()
-    except:
-        dataframe_new = pd.DataFrame()
+    except Exception as e:
+        prompt = f"""
+        This SQL query: {query}
+        
+        Is giving an error: {e}
+        
+        What should be the correct SQL query?
+        Put the SQL script in the tag "<sql_start>"  and end with <sql_end> for easy regex extraction. 
+        Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
+        Please convert all result to lower case.
+        """
+        response = gpt3.gpt_promt_davinci(prompt)
+        try:
+            query = re.search(r"<sql_start>(.*)<sql_end>", response.replace("\n", ' ')).group(1).strip()
+            dataframe_new = duckdb.query(query).df()
+        except:
+            dataframe_new = pd.DataFrame()
     # print(dataframe_new)
-    return dataframe_new
+    return dataframe_new, query
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def query_text(_schema_data, new_question, _sample_data):
     # print("Querying the GPT...")
     # Get the query
     query_recommendation = re.sub(" +", " ", generate_sql_gpt(schema_data, new_question, _sample_data))
     # Create the new dataframe
-    dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+    dataframe_new, query_recommendation = get_dataframe_from_duckdb_query(query_recommendation)
     batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
+    schema_data_new = str(dataframe_new.dtypes.to_dict().items())
     print("Batch size: ", batch_size)
+    print(dataframe_new)
     print("Shape: ", dataframe_new)
     print("\n")
-    chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = query_chart_recommendation(schema_data, new_question, query_recommendation, len(dataframe_new))
+    if len(dataframe_new) > 5:
+        sample_data_new = dataframe_new.sample(n=5)
+    else:
+        sample_data_new = dataframe_new
+    chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = query_chart_recommendation(schema_data_new, new_question, query_recommendation, len(dataframe_new), sample_data_new)
 
     if len(dataframe_new) > 0:
         pass
@@ -576,17 +606,28 @@ def query_text(_schema_data, new_question, _sample_data):
 
     return response, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation
 
-@st.cache_data
-def create_sample_question(schema_data, data):
+@st.cache_data(show_spinner=False)
+def create_sample_question(schema_data, data, regenerate_new_question):
 
     summary_statistics = data.describe()
     corr_data = data.corr()
 
-    prompt = f"You are an data analyst, " \
-             f"Generate me 50 questions based on data using the schema {schema_data}, use " \
-             f"summary statistics: {summary_statistics} and" \
-             f"correlation statistics: {corr_data}. to generate more questions" \
-             f"Put each question in <question_start> your generated question <question_end>."
+    goals_sample_question = re.findall(r"<goal_start>(.*)<goal_end>", regenerate_new_question.replace("\n", ' '))
+    print(goals_sample_question)
+
+    if len(goals_sample_question) > 0:
+        prompt = f"You are an data analyst, " \
+                 f"Generate me 50 questions based on data using the schema {schema_data}, use " \
+                 f"summary statistics: {summary_statistics} and" \
+                 f"correlation statistics: {corr_data}. to generate more questions" \
+                 f"please generate the questions to meet the objective of {goals_sample_question}" \
+                 f"Put each question in <question_start> your generated question <question_end>."
+    else:
+        prompt = f"You are an data analyst, " \
+                 f"Generate me 50 questions based on data using the schema {schema_data}, use " \
+                 f"summary statistics: {summary_statistics} and" \
+                 f"correlation statistics: {corr_data}. to generate more questions" \
+                 f"Put each question in <question_start> your generated question <question_end>."
 
     response = gpt3.gpt_promt_davinci(prompt)
 
@@ -606,14 +647,14 @@ def create_sample_question(schema_data, data):
         question_4 = None
         question_5 = None
 
-
+    print(f"Number of question generated: {regenerate_new_question}")
     return question_1, question_2, question_3, question_4, question_5
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_raw_table(data):
     st.write(data)
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def check_data_have_object(data):
     resp = data.dtypes.to_list()
     return resp
@@ -650,7 +691,7 @@ def show_dashboard(session_all_result, index_question_counter):
             item_key = "item_" + str(question)
 
             # Get new dataframe
-            dataframe_new = get_dataframe_from_duckdb_query(query_recommendation)
+            dataframe_new, query_recommendation  = get_dataframe_from_duckdb_query(query_recommendation)
             mui_card_style= {"color": '#555', 'bgcolor': '#f5f5f5', "display": "flex", 'borderRadius': 1,  "flexDirection": "column"}
 
             if "bar" in chart_recommendation.lower():
@@ -661,7 +702,7 @@ def show_dashboard(session_all_result, index_question_counter):
                                 raise
                             plot.create_bar_chart(dataframe_new, x_recommendation, y_recommendation, hue_recommendation, title_recommendation)
                         except:
-                            plot.create_error_plot(title_recommendation)
+                            plot.create_error_plot()
 
             elif "metric" in chart_recommendation.lower():
                 with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
@@ -670,7 +711,7 @@ def show_dashboard(session_all_result, index_question_counter):
                             raise
                         plot.create_metric_chart(dataframe_new, x_recommendation, y_recommendation,title_recommendation)
                     except:
-                        plot.create_error_plot(title_recommendation)
+                        plot.create_error_plot()
 
             elif "scatter" in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
@@ -680,7 +721,7 @@ def show_dashboard(session_all_result, index_question_counter):
                                 raise
                             plot.create_scatter_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            plot.create_error_plot(title_recommendation)
+                            plot.create_error_plot()
 
             elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
@@ -690,7 +731,7 @@ def show_dashboard(session_all_result, index_question_counter):
                                 raise
                             plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            plot.create_error_plot(title_recommendation)
+                            plot.create_error_plot()
 
             elif 'pie' in chart_recommendation.lower():
                 print("Pie plot")
@@ -699,9 +740,9 @@ def show_dashboard(session_all_result, index_question_counter):
                         try:
                             if len(dataframe_new) <= 0:
                                 raise
-                            plot.create_pie_chart(dataframe_new,  x_recommendation, y_recommendation, title_recommendation)
+                            plot.create_pie_chart(dataframe_new,  x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
-                            plot.create_error_plot(title_recommendation)
+                            plot.create_error_plot()
 
             elif 'line' in chart_recommendation.lower():
                 print("Line plot")
@@ -713,7 +754,7 @@ def show_dashboard(session_all_result, index_question_counter):
                             plot.create_line_chart(dataframe_new,  x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except Exception as e:
                             print(e)
-                            plot.create_error_plot(title_recommendation)
+                            plot.create_error_plot()
 
             index_question_counter+=1
 
@@ -739,7 +780,6 @@ def show_messages(_index_generated, _index_past, _i, is_result):
 
 
 def ask_new_question(sample_question, schema_data, sample_data):
-    text = st.empty()
     key_type = 'normal'
     index_questions = 'question_dict_' + key_type
     index_generated = 'generated_' + key_type
@@ -747,168 +787,172 @@ def ask_new_question(sample_question, schema_data, sample_data):
 
     form = st.form('user_form', clear_on_submit = True)
     if sample_question:
-        new_question = form.text_area("Typing in your own question below...👇", value= sample_question, key = key_type, label_visibility="collapsed").strip()
+        new_question = form.text_area("Typing in your own question below...👇", value= sample_question, key = key_type, label_visibility="collapsed").strip().lower()
         submit_label = "Clear"
     else:
-        new_question = form.text_area("Typing in your own question below...👇", key = key_type, label_visibility="collapsed").strip()
+        new_question = form.text_area("Typing in your own question below...👇", key = key_type, label_visibility="collapsed").strip().lower()
         submit_label = "Submit"
 
     submit_button = form.form_submit_button(label=submit_label)
 
     chat_col, dashboard_col = st.tabs(["Textual View", "Graphical View"])
 
-    if (submit_button) or (sample_question):
-        if new_question:
-            if new_question not in st.session_state[index_questions]:
-                st.session_state[index_questions][new_question] = ''
-                for key in st.session_state[index_questions]:
-                    if new_question == key:
+    with st.spinner("Analysing data..."):
+        if (submit_button) or (sample_question):
+            if new_question:
+                if new_question not in st.session_state[index_questions]:
+                    st.session_state[index_questions][new_question] = ''
+                    for key in st.session_state[index_questions]:
+                        if new_question == key:
 
-                        output, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key, sample_data)
+                            output, chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation, query_recommendation = query_text(schema_data, key, sample_data)
 
-                        if chart_recommendation != None:
-                            resp = {
-                                "question": new_question,
-                                "query_recommendation": query_recommendation,
-                                "chart_recommendation": chart_recommendation,
-                                "x_recommendation": x_recommendation,
-                                "y_recommendation": y_recommendation,
-                                "hue_recommendation": hue_recommendation,
-                                "title_recommendation": title_recommendation,
-                                "hide_graph": False
-                            }
-                            # Store the results of the questions
-                            st.session_state["all_result"].append(resp)
+                            if chart_recommendation != None:
+                                resp = {
+                                    "question": new_question,
+                                    "query_recommendation": query_recommendation,
+                                    "chart_recommendation": chart_recommendation,
+                                    "x_recommendation": x_recommendation,
+                                    "y_recommendation": y_recommendation,
+                                    "hue_recommendation": hue_recommendation,
+                                    "title_recommendation": title_recommendation,
+                                    "hide_graph": False
+                                }
+                                # Store the results of the questions
+                                st.session_state["all_result"].append(resp)
 
-                            print("Summary results: \n", resp)
+                                print("Summary results: \n", resp)
 
-                        # Store the question that was asked into past question index
-                        st.session_state[index_past].append(new_question)
-                        output_template = f"""
-                        {output} \n\n Query:\n{query_recommendation}
-                        """
+                            # Store the question that was asked into past question index
+                            st.session_state[index_past].append(new_question)
+                            output_template = f"""
+                            {output} \n\n Query:\n{query_recommendation}
+                            """
 
-                        st.session_state[index_generated].append(output_template)
+                            st.session_state[index_generated].append(output_template)
 
 
-            else:
-                st.info('Question exists, bringing question to recent view...', icon="⚠️")
-                exist_question_index = st.session_state[index_past].index(new_question)
-                exist_question = st.session_state[index_past].pop(exist_question_index)
-                # print(f"This question exists: {exist_question}")
-                exist_output = st.session_state[index_generated].pop(exist_question_index)
-                # print(f"This output exists: {exist_output}")
+                else:
+                    st.info('Question exists, bringing question to recent view...', icon="⚠️")
+                    exist_question_index = st.session_state[index_past].index(new_question)
+                    exist_question = st.session_state[index_past].pop(exist_question_index)
+                    # print(f"This question exists: {exist_question}")
+                    exist_output = st.session_state[index_generated].pop(exist_question_index)
+                    # print(f"This output exists: {exist_output}")
 
-                # Reinsert the question and output
-                st.session_state[index_past].append(exist_question)
-                st.session_state[index_generated].append(exist_output)
+                    # Reinsert the question and output
+                    st.session_state[index_past].append(exist_question)
+                    st.session_state[index_generated].append(exist_output)
 
-    #########################################################################################################################
-    ## Populating the question and answers
-    #########################################################################################################################
-    with chat_col:
-        if st.session_state["all_result"]:
-            st.markdown("### Answers")
-            counter_non_result = 0
-            counter_message_limit = 0
-            if st.session_state[index_generated]:
-                placeholder = st.empty()
-                with placeholder.container():
-                    total_length_reverse =  reversed(range(len(st.session_state[index_generated])-1, -1, -1))
-                    for i in total_length_reverse:
-                        try:
-                            if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
-                                counter_non_result += 1
-                                if counter_non_result <= 1:
-                                    # if questions does not produce result,
-                                    # only show the first question and hide the rest
-                                    show_messages(index_generated, index_past, i, False)
-
-                            else:
-                                # Show the lastest 5 message
-                                # if questions have result print them out
-                                show_messages(index_generated, index_past, i, True)
-                                counter_message_limit += 1
-                        except:
-                            pass
-
-    #########################################################################################################################
-    ## Handling the Dashboard Layouts For Created Charts
-    #########################################################################################################################
-    # Create a list to keep the layout
-    layout = []
-    # Plot element dashboard
-    with dashboard_col:
-        with elements("dashboard"):
-
-            # initialize layout
-            # check_layout_user_exists(username)
-            counter_recommendation = 0
-
-            # Check if session state have a chart
-            if 'streamlit_elements.core.frame.elements_frame.dashboard' in st.session_state:
-                if st.session_state['streamlit_elements.core.frame.elements_frame.dashboard']:
-                    session_state_layout = json.loads(st.session_state['streamlit_elements.core.frame.elements_frame.dashboard'])
-                    if 'streamlit_elements.core.frame.elements_frame.dashboard00000000' in session_state_layout:
-                        layout = session_state_layout['streamlit_elements.core.frame.elements_frame.dashboard00000000']['updated_layout']
-                # print("============================================================================")
-
-            # You can create a draggable and resizable dashboard using
-            for recommendation in st.session_state["all_result"]:
-                if recommendation['hide_graph'] == False:
-                    question = recommendation['question']
-                    chart_recommendation = recommendation['chart_recommendation']
-                    if chart_recommendation != None:
-                        if 'pie' in chart_recommendation.lower():
-                            width = 4
-                            height = 2
-                        elif 'line' in chart_recommendation.lower():
-                            width = 6
-                            height = 2
-                        elif 'metric' in chart_recommendation.lower():
-                            width = 2
-                            height = 2
-                        else:
-                            width = 3
-                            height = 2
-                        # First, build a default layout for every element you want to include in your dashboard
-                        item_key = "item_" + str(question)
-
-                        if len(layout) > 0:
-                            for layer in layout:
-                                if layer['i'] == item_key:
-                                    pass
-                                elif item_key not in str(layout):
-                                    layout = layout + [
-                                        # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                        dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
-                                    ]
-                                else:
-                                    pass
-                        else:
-                            layout = layout + [
-                                # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
-                                dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
-                            ]
-                        counter_recommendation += 1
-            def handle_layout_change(updated_layout):
-                # You can save the layout in a file, or do anything you want with it.
-                # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
-                # print("(Line 739) Updated Layout", updated_layout)
-                # data = {username: updated_layout}
-                # with open("session_layout/sample.json", "w") as outfile:
-                #     outfile.write(json.dumps(data, indent=4))
-                print("(line 723) Updated Layout: ", updated_layout)
-                # print("\n")
-
-            #########################################################################################################################
-            ## Handling the Dashboard
-            #########################################################################################################################
+        #########################################################################################################################
+        ## Populating the question and answers
+        #########################################################################################################################
+        with chat_col:
             if st.session_state["all_result"]:
-                st.markdown("### Dashboard")
-            with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
-                index_question_counter = 0
-                show_dashboard(st.session_state["all_result"], index_question_counter)
+                st.markdown("### Answers")
+                counter_non_result = 0
+                counter_message_limit = 0
+                if st.session_state[index_generated]:
+                    placeholder = st.empty()
+                    with placeholder.container():
+                        total_length_reverse =  reversed(range(len(st.session_state[index_generated])-1, -1, -1))
+                        for i in total_length_reverse:
+                            try:
+                                if (st.session_state[index_generated][i]).strip() == "The query produce no result, please rephrase the question.":
+                                    counter_non_result += 1
+                                    if counter_non_result <= 1:
+                                        # if questions does not produce result,
+                                        # only show the first question and hide the rest
+                                        show_messages(index_generated, index_past, i, False)
+
+                                else:
+                                    # Show the lastest 5 message
+                                    # if questions have result print them out
+                                    show_messages(index_generated, index_past, i, True)
+                                    counter_message_limit += 1
+                            except:
+                                pass
+
+        #########################################################################################################################
+        ## Handling the Dashboard Layouts For Created Charts
+        #########################################################################################################################
+        # Create a list to keep the layout
+        layout = []
+        # Plot element dashboard
+        with dashboard_col:
+            with elements("dashboard"):
+
+                # initialize layout
+                # check_layout_user_exists(username)
+                counter_recommendation = 0
+
+                # Check if session state have a chart
+                if 'streamlit_elements.core.frame.elements_frame.dashboard' in st.session_state:
+                    if st.session_state['streamlit_elements.core.frame.elements_frame.dashboard']:
+                        session_state_layout = json.loads(st.session_state['streamlit_elements.core.frame.elements_frame.dashboard'])
+                        if 'streamlit_elements.core.frame.elements_frame.dashboard00000000' in session_state_layout:
+                            layout = session_state_layout['streamlit_elements.core.frame.elements_frame.dashboard00000000']['updated_layout']
+                    # print("============================================================================")
+
+                # You can create a draggable and resizable dashboard using
+                for recommendation in st.session_state["all_result"]:
+                    if recommendation['hide_graph'] == False:
+                        question = recommendation['question']
+                        chart_recommendation = recommendation['chart_recommendation']
+                        if chart_recommendation != None:
+                            if 'pie' in chart_recommendation.lower():
+                                width = 4
+                                height = 2
+                            elif 'line' in chart_recommendation.lower():
+                                width = 6
+                                height = 2
+                            elif 'metric' in chart_recommendation.lower():
+                                width = 2
+                                height = 1
+                            elif 'bar' in chart_recommendation.lower():
+                                width = 6
+                                height = 3
+                            else:
+                                width = 3
+                                height = 2
+                            # First, build a default layout for every element you want to include in your dashboard
+                            item_key = "item_" + str(question)
+
+                            if len(layout) > 0:
+                                for layer in layout:
+                                    if layer['i'] == item_key:
+                                        pass
+                                    elif item_key not in str(layout):
+                                        layout = layout + [
+                                            # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                            dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
+                                        ]
+                                    else:
+                                        pass
+                            else:
+                                layout = layout + [
+                                    # Parameters: element_identifier, x_pos, y_pos, width, height, [item properties...]
+                                    dashboard.Item(item_key, 0, counter_recommendation, width, height, isResizable=True, isDraggable=True)
+                                ]
+                            counter_recommendation += 1
+                def handle_layout_change(updated_layout):
+                    # You can save the layout in a file, or do anything you want with it.
+                    # You can pass it back to dashboard.Grid() if you want to restore a saved layout.
+                    # print("(Line 739) Updated Layout", updated_layout)
+                    # data = {username: updated_layout}
+                    # with open("session_layout/sample.json", "w") as outfile:
+                    #     outfile.write(json.dumps(data, indent=4))
+                    print("(line 723) Updated Layout: ", updated_layout)
+                    # print("\n")
+
+                #########################################################################################################################
+                ## Handling the Dashboard
+                #########################################################################################################################
+                if st.session_state["all_result"]:
+                    st.markdown("### Dashboard")
+                with dashboard.Grid(layout, onLayoutChange=handle_layout_change):
+                    index_question_counter = 0
+                    show_dashboard(st.session_state["all_result"], index_question_counter)
 
 #########################################################################################################################
 ## Main Application
@@ -931,8 +975,8 @@ if UPLOADED_FILE is not None:
             get_raw_table(DATA)
 
         # Inspecting summary statistics
-        with st.expander("See summary statistics"):
-            get_summary_statistics(DATA)
+        # with st.expander("See summary statistics"):
+        #     get_summary_statistics(DATA)
 
         data_schema = convert_datatype(DATA)
         schema_data = str(data_schema.dtypes.to_dict().items())
@@ -941,9 +985,26 @@ if UPLOADED_FILE is not None:
         st.markdown("### Exploration 💬")
         st.write("Below are some sample questions, pick one of the questions below to see how our AI can analyse your question.")
         col1, col2, col3, col4, col5 = st.columns(5)
+        col_question_1, col_question_2 = st.columns([1, 2])
+
+        # Check if Button is pressed
+        regenerate_new_question = 'None'
 
         # Generate 5 sample questions
-        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA)
+        with col_question_1:
+            if st.button('🔄 Re-generate sample question'):
+                new_sample_question = st.session_state['sample_question_generation']
+                st.session_state['sample_question_generation'] = new_sample_question+1
+                regenerate_new_question = "regenerate_sample_question" + str(st.session_state['sample_question_generation'])
+
+        # with col_question_2:
+        #     form_goals = st.form('user_form_goals', clear_on_submit = True)
+        #     theme_sample_question = form_goals.text_input("TEST", placeholder='Enter the theme/goals for the questions when you regenerate new sample questions.',label_visibility='collapsed')
+        #     submit_button_goals = form_goals.form_submit_button(label='Apply Goals')
+        #     if submit_button_goals:
+        #         regenerate_new_question = regenerate_new_question + '_<goal_start>' + str(theme_sample_question) + '<goal_end>'
+
+        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = create_sample_question(schema_data, DATA, regenerate_new_question)
         # sample_question_1 = "What us the average age of the people in the dataset?"
         # sample_question_2 = "What is the most common sex in the dataset?"
         # sample_question_3 = "What is the average BMI of the people in the dataset?"
@@ -954,23 +1015,23 @@ if UPLOADED_FILE is not None:
         # Create the sample questions columns
         with col1:
             if st.button(sample_question_1):
-                question = sample_question_1
+                question = sample_question_1.lower()
 
         with col2:
             if st.button(sample_question_2):
-                question = sample_question_2
+                question = sample_question_2.lower()
 
         with col3:
             if st.button(sample_question_3):
-                question = sample_question_3
+                question = sample_question_3.lower()
 
         with col4:
             if st.button(sample_question_4):
-                question = sample_question_4
+                question = sample_question_4.lower()
 
         with col5:
             if st.button(sample_question_5):
-                question = sample_question_5
+                question = sample_question_5.lower()
 
         # Generate the ask question bar
         st.markdown("Type in your question below (Press Ctrl+Enter to key in question):")
@@ -1035,6 +1096,7 @@ if UPLOADED_FILE is not None:
             <a href="https://github.com/thongekchakrit">GitHub</a>
             <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
             <a href="./Privacy_Policy">Privacy Policy</a>
+            version 0.0.1 (pre-alpha)
             
         </div>""",
         unsafe_allow_html=True)
