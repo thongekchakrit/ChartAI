@@ -206,7 +206,7 @@ def query(sample_data_overview, new_question):
 
 @st.cache_data(show_spinner=False)
 def generate_sql_gpt(_data_schema, new_question, _sample_data):
-    print("Query: ", new_question)
+    # print("Query: ", new_question)
     prompt = f"""
     
     Example Context: 
@@ -439,10 +439,10 @@ def recursion_batch(list_of_df, list_of_result, new_question, query_recommendati
     :return: Recursive response from chat GPT
     '''
 
-    print("Recursive batch length: ", len(list_of_df[0].to_json()))
-    print("Recursive batch: ", list_of_df[0])
-    print("Length: ", len(list_of_result))
-    print("Content: ", list_of_result)
+    # print("Recursive batch length: ", len(list_of_df[0].to_json()))
+    # print("Recursive batch: ", list_of_df[0])
+    # print("Length: ", len(list_of_result))
+    # print("Content: ", list_of_result)
     if len(list_of_df) <= 10:
         if len(list_of_df) < 2:
             dataframe_json = list_of_df[0].to_json()
@@ -540,7 +540,7 @@ def explain_result(query_recommendation, new_question, dataframe_new):
             # print("Processing sub explaination")
             max_words_per_list = 3500
             sublists = split_words_into_sublists(response, max_words_per_list)
-            print("Sublist of result: ", sublists)
+            # print("Sublist of result: ", sublists)
             response = recursive_summarizer_sub(sublists, list_of_result_response, new_question)
             response = '\n'.join(response)
         else:
@@ -613,7 +613,7 @@ def create_sample_question(schema_data, data, regenerate_new_question):
     corr_data = data.corr()
 
     goals_sample_question = re.findall(r"<goal_start>(.*)<goal_end>", regenerate_new_question.replace("\n", ' '))
-    print(goals_sample_question)
+    # print(goals_sample_question)
 
     if len(goals_sample_question) > 0:
         prompt = f"You are an data analyst, " \
@@ -647,7 +647,7 @@ def create_sample_question(schema_data, data, regenerate_new_question):
         question_4 = None
         question_5 = None
 
-    print(f"Number of question generated: {regenerate_new_question}")
+    # print(f"Number of question generated: {regenerate_new_question}")
     return question_1, question_2, question_3, question_4, question_5
 
 @st.cache_data(show_spinner=False)
@@ -734,7 +734,7 @@ def show_dashboard(session_all_result, index_question_counter):
                             plot.create_error_plot()
 
             elif 'pie' in chart_recommendation.lower():
-                print("Pie plot")
+                # print("Pie plot")
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
@@ -745,7 +745,7 @@ def show_dashboard(session_all_result, index_question_counter):
                             plot.create_error_plot()
 
             elif 'line' in chart_recommendation.lower():
-                print("Line plot")
+                # print("Line plot")
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
@@ -821,7 +821,7 @@ def ask_new_question(sample_question, schema_data, sample_data):
                                 # Store the results of the questions
                                 st.session_state["all_result"].append(resp)
 
-                                print("Summary results: \n", resp)
+                                # print("Summary results: \n", resp)
 
                             # Store the question that was asked into past question index
                             st.session_state[index_past].append(new_question)
@@ -942,8 +942,8 @@ def ask_new_question(sample_question, schema_data, sample_data):
                     # data = {username: updated_layout}
                     # with open("session_layout/sample.json", "w") as outfile:
                     #     outfile.write(json.dumps(data, indent=4))
-                    print("(line 723) Updated Layout: ", updated_layout)
-                    # print("\n")
+                    # print("(line 723) Updated Layout: ", updated_layout)
+                    print("\n")
 
                 #########################################################################################################################
                 ## Handling the Dashboard
