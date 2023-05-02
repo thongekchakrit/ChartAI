@@ -6,7 +6,7 @@ from streamlit_chat import message
 import streamlit_toggle as tog
 import pandas as pd
 import json
-import gpt3
+import gpt3 as open_ai_gpt3
 import duckdb
 import plot
 import re
@@ -39,7 +39,7 @@ GPT_SECRETS = st.secrets["gpt_secret"]
 SIDE_BAR_QUESTION_TAB_1 = 'question_dict_normal'
 SIDE_BAR_GENERATED_DATASET_INPUT_1 = 'generated_normal'
 SIDE_BAR_PAST_DATASET_INPUT_1 = 'past_normal'
-gpt3.openai.api_key = GPT_SECRETS
+open_ai_gpt3.openai.api_key = GPT_SECRETS
 
 with col_main_2:
     if not UPLOADED_FILE:
@@ -132,7 +132,7 @@ def get_data_overview(header):
               f"You are an actuary, " \
               f"Describe what each column means and what the dataset can be used for?"
 
-    response = gpt3.gpt_promt(prompt)
+    response = open_ai_gpt3.gpt_promt(prompt)
     st.markdown(response['content'])
 
 @st.cache_data(show_spinner=False)
@@ -151,7 +151,7 @@ def get_summary_statistics(dataframe):
                  f"Given the summary description of the data below: {json_description}, " \
                  f"You are an actuary, " \
                  f"Explain the result given in full detail. "
-        response = gpt3.gpt_promt(prompt)
+        response = open_ai_gpt3.gpt_promt(prompt)
         st.markdown(response['content'])
 
     if any(x in dtype_list for x in ['O']):
@@ -163,7 +163,7 @@ def get_summary_statistics(dataframe):
                     f"Given the summary description of the data below of categorical data: {description_objects}, " \
                     f"You are an actuary, " \
                     f"explain the result given in full detail "
-        response = gpt3.gpt_promt(prompt_2)
+        response = open_ai_gpt3.gpt_promt(prompt_2)
         st.markdown(response['content'])
 
 @st.cache_data(show_spinner=False)
@@ -181,7 +181,7 @@ def get_dataframe_from_duckdb_query(query):
         Please give column names after the transformation and select an appropriate number of columns so that we can create a visualization from it.
         Please convert all result to lower case.
         """
-        response = gpt3.gpt_promt_davinci(prompt)
+        response = open_ai_gpt3.gpt_promt_davinci(prompt)
         try:
             query = re.search(r"<sql_start>(.*)<sql_end>", response.replace("\n", ' ')).group(1).strip()
             dataframe_new = duckdb.query(query).df()
@@ -194,7 +194,7 @@ def get_dataframe_from_duckdb_query(query):
 def query_text(_schema_data, new_question, _sample_data):
     # print("Querying the GPT...")
     # Get the query
-    query_recommendation = re.sub(" +", " ", gpt3.generate_sql_gpt(schema_data, new_question, _sample_data))
+    query_recommendation = re.sub(" +", " ", open_ai_gpt3.generate_sql_gpt(schema_data, new_question, _sample_data))
     # Create the new dataframe
     dataframe_new, query_recommendation = get_dataframe_from_duckdb_query(query_recommendation)
     batch_size = round(len(dataframe_new.to_json())/ 3200 ) + (len(dataframe_new.to_json()) % 3200 > 0)
@@ -207,14 +207,14 @@ def query_text(_schema_data, new_question, _sample_data):
         sample_data_new = dataframe_new.sample(n=5)
     else:
         sample_data_new = dataframe_new
-    chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = gpt3.query_chart_recommendation(schema_data_new, new_question, query_recommendation, len(dataframe_new), sample_data_new)
+    chart_recommendation, x_recommendation, y_recommendation, hue_recommendation, title_recommendation = open_ai_gpt3.query_chart_recommendation(schema_data_new, new_question, query_recommendation, len(dataframe_new), sample_data_new)
 
     if len(dataframe_new) > 0:
         pass
-        response = gpt3.explain_result(query_recommendation, new_question, dataframe_new)
+        response = open_ai_gpt3.explain_result(query_recommendation, new_question, dataframe_new)
         print("Response", response)
     else:
-        response = gpt3.query_no_result(_schema_data, new_question, query_recommendation)
+        response = open_ai_gpt3.query_no_result(_schema_data, new_question, query_recommendation)
         chart_recommendation = None
         x_recommendation = None
         y_recommendation = None
@@ -558,7 +558,7 @@ if UPLOADED_FILE is not None:
                 st.session_state['sample_question_generation'] = new_sample_question+1
                 regenerate_new_question = "regenerate_sample_question" + str(st.session_state['sample_question_generation'])
 
-        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = gpt3.create_sample_question(schema_data, DATA, regenerate_new_question)
+        sample_question_1, sample_question_2, sample_question_3, sample_question_4, sample_question_5 = open_ai_gpt3.create_sample_question(schema_data, DATA, regenerate_new_question)
         question = None
 
         # Create the sample questions columns
