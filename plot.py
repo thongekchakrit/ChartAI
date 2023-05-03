@@ -423,6 +423,82 @@ def create_swarm_plot(data, x_var, y_var, hue_var, title):
     else:
         raise
 
+def create_box_plot(data, x_var, y_var, hue_var, title):
+
+    """
+    :param data: The dataframe that needs to be plotted
+    :param title: The title of the chart
+    :param x_var: The x numerical variable or the metric that we want to be plotted
+    :param x_var: The y numerical variable is the metric that we want to measure
+    :param hue_var: The hue variable is the categorical data that we would like to plot
+    :return: swarm plot
+    """
+    if hue_var:
+        list_hue_var= [x for x in data[hue_var].unique()]
+        data_to_plot = data.reset_index().rename(columns={'index': 'id', hue_var: 'group'})[['id', 'group', y_var, x_var]].to_dict('records')
+        minimum_y = round(data[y_var].min())
+        max_y = round(data[y_var].max())
+        min_x = round(data[x_var].min())
+        max_x = round(data[x_var].max())
+
+        with mui.Typography:
+            html.div(
+                title,
+                css={
+                    "display": "block",
+                    "margin-top": "1em",
+                    "margin-bottom": "1em",
+                    "margin-left": "1em",
+                    "margin-right": "0em",
+                    "font-weight": "bold"
+                }
+            )
+
+        nivo.BoxPlot(
+            data=data_to_plot,
+            groups=list_hue_var,
+            margin={"top": 60, "right": 140, "bottom": 60, "left": 60 },
+            minValue=minimum_y,
+            maxValue=max_y,
+            padding=0.12,
+            enableGridX=True,
+            axisTop={
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": 0,
+                "legend": '',
+                "legendPosition": 'middle',
+                "legendOffset": 36
+            },
+            axisRight={
+                "orient": 'right',
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": 0,
+                "legend": f'',
+                "legendPosition": 'middle',
+                "legendOffset": 0
+            },
+            axisBottom={
+                "orient": 'bottom',
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": 0,
+                "legend": f'',
+                "legendPosition": 'middle',
+                "legendOffset": 32
+            },
+            axisLeft={
+                "orient": 'left',
+                "tickSize": 5,
+                "tickPadding": 5,
+                "tickRotation": 0,
+                "legend": f'',
+                "legendPosition": 'middle',
+                "legendOffset": -76
+            })
+    else:
+        raise
 
 def create_pie_chart(data_to_plot,x_var, y_var, hue_var, title):
 
@@ -502,7 +578,7 @@ def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
         if 'datetime' in str(dtype):
             data_to_plot[col] = data_to_plot[col].dt.strftime('%Y-%m-%d')
 
-    if hue_var:
+    if hue_var != 'None':
         list_hue_var= [x for x in data_to_plot[hue_var].unique()]
         lst_of_dict = []
 
@@ -522,7 +598,7 @@ def create_line_chart(data_to_plot, x_var, y_var, hue_var, title):
             "data": data_to_plot.rename(columns={x_var: 'x', y_var: 'y'}).to_dict('records')
         }]
 
-    print(data_to_plot)
+    print("Line plot: ", data_to_plot)
 
     with mui.Typography:
         html.div(

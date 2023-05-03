@@ -71,6 +71,7 @@ st.markdown(
         <a href="https://github.com/thongekchakrit">GitHub</a>
         <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
         <a href="./Privacy_Policy">Privacy Policy</a>
+        <a href="./Feature_Release">Feature Release</a>
         
     </div>""",
     unsafe_allow_html=True,

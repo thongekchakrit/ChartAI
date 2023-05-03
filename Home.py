@@ -13,11 +13,11 @@ import re
 import os
 
 # if authentication_status:
-st.set_page_config(page_title="GraphGPT", page_icon="assets/images/favicon.png", layout="wide", initial_sidebar_state='collapsed')
+st.set_page_config(page_title="ChartAI", page_icon="assets/images/favicon.png", layout="wide", initial_sidebar_state='collapsed')
 col_main_1, col_main_2, col_main_3 = st.columns([1,5,1])
 
 with col_main_2:
-    st.markdown("# **GraphGPT - Text to Graphs/Charts**")
+    st.markdown("# **ChartAI - Text to Graphs/Charts**")
     st.markdown(
         """
         Generate insights and graphs from raw data in this web application.  
@@ -296,7 +296,7 @@ def show_dashboard(session_all_result, index_question_counter):
                         except:
                             plot.create_error_plot()
 
-            elif 'box' in chart_recommendation.lower() or 'swarm' in chart_recommendation.lower():
+            elif 'swarm' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
                     with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
                         try:
@@ -305,6 +305,16 @@ def show_dashboard(session_all_result, index_question_counter):
                             plot.create_swarm_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except:
                             plot.create_error_plot()
+
+            # elif 'box' in chart_recommendation.lower():
+            #     if (x_recommendation != 'None') & (y_recommendation != 'None'):
+            #         with mui.Paper(label=question, elevation=10, variant="outlined", square=True, key=item_key, sx=mui_card_style):
+            #             try:
+            #                 if len(dataframe_new) <= 0:
+            #                     raise
+            #                 plot.create_box_plot(dataframe_new, x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
+            #             except:
+            #                 plot.create_error_plot()
 
             elif 'pie' in chart_recommendation.lower():
                 if (x_recommendation != 'None') & (y_recommendation != 'None'):
@@ -322,9 +332,11 @@ def show_dashboard(session_all_result, index_question_counter):
                         try:
                             if len(dataframe_new) <= 0:
                                 raise
+                            print("Creating line plot")
                             plot.create_line_chart(dataframe_new,  x_recommendation, y_recommendation,hue_recommendation, title_recommendation)
                         except Exception as e:
                             print(e)
+                            print("Creating line plot Error")
                             plot.create_error_plot()
 
             index_question_counter+=1
@@ -390,7 +402,7 @@ def ask_new_question(sample_question, schema_data, sample_data):
                                 # Store the results of the questions
                                 st.session_state["all_result"].append(resp)
 
-                                # print("Summary results: \n", resp)
+                                print("Summary results: \n", resp)
 
                             # Store the question that was asked into past question index
                             st.session_state[index_past].append(new_question)
@@ -481,6 +493,9 @@ def ask_new_question(sample_question, schema_data, sample_data):
                             elif 'bar' in chart_recommendation.lower():
                                 width = 6
                                 height = 3
+                            elif 'box' in chart_recommendation.lower():
+                                width = 4
+                                height = 2
                             else:
                                 width = 3
                                 height = 2
@@ -621,6 +636,7 @@ if UPLOADED_FILE is not None:
             <a href="https://github.com/thongekchakrit">GitHub</a>
             <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
             <a href="./Privacy_Policy">Privacy Policy</a>
+            <a href="./Feature_Release">Feature Release</a>
             version 0.0.1 (pre-alpha)
             
         </div>""",

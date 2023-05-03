@@ -12,7 +12,13 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 
 st.markdown("""
-# Coming Soon...
+# Pre-alpha 0.0.1 Release
+### Supported Chart Types
+- Bar Chart
+- Line Plot
+- Scatter Plot
+- Swarm Plot
+- Pie Chart
 
 ## 
 
@@ -53,7 +59,6 @@ st.markdown(
         <a href="https://github.com/thongekchakrit">GitHub</a>
         <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
         <a href="./Privacy_Policy">Privacy Policy</a>
-        <a href="./Documentation">Documentation</a>
         <a href="./Feature_Release">Feature Release</a>
         
     </div>""",
