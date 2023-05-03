@@ -632,8 +632,6 @@ if UPLOADED_FILE is not None:
         </style>
         
         <div class="footer">
-        Made By Chakrit Thong EK: &nbsp;
-            <a href="https://github.com/thongekchakrit">GitHub</a>
             <a href="https://www.linkedin.com/in/thongekchakrit/">LinkedIn</a>
             <a href="./Privacy_Policy">Privacy Policy</a>
             <a href="./Feature_Release">Feature Release</a>
