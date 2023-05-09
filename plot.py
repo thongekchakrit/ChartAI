@@ -515,6 +515,8 @@ def create_pie_chart(data_to_plot,x_var, y_var, hue_var, title):
     df_new['color'] = lst
     data_to_plot_json = df_new.to_dict('records')
 
+    print(data_to_plot_json)
+
     with mui.Typography:
         html.div(
             title,
