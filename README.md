@@ -1,7 +1,28 @@
 # ChartAI - Text to Graph/Charts and Insights
 This web application is built using python, streamlit, python enabled html, Nivo Chart and mui.
 
+
+
 ![overview_of_app.png](assets%2Fimages%2Foverview_of_app.png)
+
+## Features
+ 
+1) Generate insights to the tabular data, you can upload your CSV file and ask any question about it.
+2) Text to SQL
+3) Text to Chart/Graph
+   4) The Graph that has been created is draggable and resizable
+
+Current supported chart types:
+
+-Bar Chart
+
+-Line Plot
+
+-Scatter Plot
+
+-Swarm Plot
+
+-Pie Chart
 
 ## How to use the Repository
 To start using the repository, first clone the project into your local pc
@@ -32,6 +53,8 @@ To run the application. Within the terminal of the IDE do:
 ```
 streamlit run Home.py
 ```
+
+Access the site using: http://localhost:8501
 
 ## Contribution
 Please feel free to contribute to the repository.
