@@ -10,7 +10,7 @@ This web application is built using python, streamlit, python enabled html, Nivo
 1) Generate insights to the tabular data, you can upload your CSV file and ask any question about it.
 2) Text to SQL
 3) Text to Chart/Graph
-   4) The Graph that has been created is draggable and resizable
+4) The Graph that has been created is draggable and resizable
 
 Current supported chart types:
 
